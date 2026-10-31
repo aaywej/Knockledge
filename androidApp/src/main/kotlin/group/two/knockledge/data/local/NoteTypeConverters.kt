@@ -6,7 +6,9 @@ import group.two.knockledge.data.model.Sentence
 import org.json.JSONArray
 import org.json.JSONObject
 
+/** Stores the list-valued note fields as JSON text columns. */
 class NoteTypeConverters {
+    /** Encodes sentences as a JSON array in the field order [jsonToSentences] reads back. */
     @TypeConverter
     fun sentencesToJson(list: List<Sentence>?): String? = list?.let { l ->
         JSONArray(l.map {
@@ -19,6 +21,7 @@ class NoteTypeConverters {
         }).toString()
     }
 
+    /** Parses the output of [sentencesToJson]; null input stays null. */
     @TypeConverter
     fun jsonToSentences(json: String?): List<Sentence>? = json?.let { s ->
         val a = JSONArray(s)
@@ -34,6 +37,7 @@ class NoteTypeConverters {
         }
     }
 
+    /** Encodes chapter markers and their bullet lists as a JSON array. */
     @TypeConverter
     fun markersToJson(list: List<ChapterMarker>?): String? = list?.let { l ->
         JSONArray(l.map {
@@ -44,6 +48,7 @@ class NoteTypeConverters {
         }).toString()
     }
 
+    /** Parses the output of [markersToJson]; null input stays null. */
     @TypeConverter
     fun jsonToMarkers(json: String?): List<ChapterMarker>? = json?.let { s ->
         val a = JSONArray(s)
@@ -53,9 +58,11 @@ class NoteTypeConverters {
         }
     }
 
+    /** Encodes a string list as a JSON array of strings. */
     @TypeConverter
     fun stringsToJson(list: List<String>?): String? = list?.let { JSONArray(it).toString() }
 
+    /** Parses the output of [stringsToJson]; null input stays null. */
     @TypeConverter
     fun jsonToStrings(json: String?): List<String>? = json?.let { strings(JSONArray(it)) }
 

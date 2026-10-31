@@ -7,7 +7,9 @@ import androidx.credentials.GetCredentialRequest
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 
+/** Gets a Google ID token through Credential Manager, for exchanging with the backend. */
 class GoogleIdTokenClient(private val webClientId: String) {
+    /** Shows the Google account picker and returns the ID token; throws when the user cancels and require() fails for any other credential type. */
     suspend fun fetch(activity: Context): String {
         val option = GetGoogleIdOption.Builder()
             .setServerClientId(webClientId)

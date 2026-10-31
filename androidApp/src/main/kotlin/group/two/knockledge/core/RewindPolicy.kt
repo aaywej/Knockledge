@@ -1,5 +1,9 @@
 package group.two.knockledge.core
 
+import group.two.knockledge.core.RewindPolicy.MAX_WINDOW_SECONDS
+import group.two.knockledge.core.RewindPolicy.MIN_WINDOW_SECONDS
+
+
 /**
  * Product rules from docs/SPEC.md, in one place.
  */
@@ -20,6 +24,7 @@ object RewindPolicy {
     const val MAX_WINDOW_SECONDS: Int = 5 * 60
     const val CHUNK_SECONDS: Int = 5
 
+    /** Clamps a requested window to [MIN_WINDOW_SECONDS]..[MAX_WINDOW_SECONDS]. */
     fun clampWindowSeconds(seconds: Int): Int = seconds.coerceIn(MIN_WINDOW_SECONDS, MAX_WINDOW_SECONDS)
 }
 

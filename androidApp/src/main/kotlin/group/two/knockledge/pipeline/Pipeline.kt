@@ -5,9 +5,11 @@ import group.two.knockledge.settings.SummaryLanguages
 
 /** Local LLM. Input is the filtered transcript, output is the only thing a user ever sees. */
 interface Summarizer {
+    /** Turns a filtered transcript into the recap the user reads. */
     suspend fun summarize(request: SummaryRequest): Summary
 }
 
+/** Everything the summarizer needs that is not the transcript text itself. */
 data class SummaryRequest(
     val filteredTranscript: String,
     val looksLikeConversation: Boolean,
@@ -15,6 +17,7 @@ data class SummaryRequest(
     val durationMillis: Long,
 )
 
+/** A rewind card: short title, one-line gist, and a few key points. */
 data class Summary(
     val title: String,
     val gist: String,
@@ -34,6 +37,7 @@ class RewindPipeline(
     private val filter: SensitiveFilter,
     private val summarizer: Summarizer,
 ) {
+    /** Runs the full pipeline once and returns the summary. [onStage] reports progress. */
     suspend fun run(
         pcm: ShortArray,
         sampleRate: Int,
@@ -105,6 +109,7 @@ object SummarizerPrompt {
     /** Apple's on-device model has a 4096 token window for input and output together. */
     const val APPLE_MAX_TRANSCRIPT_CHARS: Int = 5_000
 
+    /** User prompt carrying the clipped transcript and the language instruction. */
     fun user(
         request: SummaryRequest,
         maxChars: Int = MAX_TRANSCRIPT_CHARS,

@@ -11,15 +11,18 @@ import group.two.knockledge.pipeline.TranscriptResult
 import group.two.knockledge.pipeline.TranscriptSentence
 import group.two.knockledge.pipeline.TranscriptionEngine
 import group.two.knockledge.pipeline.TranscriptionEngineType
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
+/** One request to Gemini: a WAV clip plus a text prompt, answered with raw response text. */
 interface GeminiClient {
+    /** Returns the model's reply for [wav] under [prompt]; implementations may throw on failure. */
     suspend fun generate(wav: ByteArray, prompt: String): String
 }
 
+/** Firebase AI Logic client that asks Gemini for a JSON transcript with speaker turns. */
 class FirebaseGeminiClient : GeminiClient {
     private val model by lazy {
         Firebase.ai(backend = GenerativeBackend.googleAI()).generativeModel(
@@ -47,6 +50,7 @@ class FirebaseGeminiClient : GeminiClient {
         )
     }
 
+    /** Returns the JSON reply text; throws [IllegalStateException] when Gemini sends nothing. */
     override suspend fun generate(wav: ByteArray, prompt: String): String =
         model.generateContent(content { inlineData(wav, "audio/wav"); text(prompt) }).text
             ?: error("empty Gemini response")
@@ -71,11 +75,13 @@ private data class GeminiSentence(
     val confidence: Float = 1.0f,
 )
 
+/** Cloud transcription: uploads each segment to Gemini and maps its JSON reply to [TranscriptResult]. */
 class FirebaseAiTranscriber(private val client: GeminiClient) : TranscriptionEngine {
     override val engineType = TranscriptionEngineType.CLOUD_FIREBASE_AI
 
     private val json = Json { ignoreUnknownKeys = true }
 
+    /** Sends [segment] as a WAV plus the transcription prompt; throws if the reply cannot be parsed. */
     override suspend fun process(segment: AudioSegment): TranscriptResult =
         parse(client.generate(wav(segment.pcm, segment.sampleRate), PROMPT))
 
@@ -93,6 +99,7 @@ class FirebaseAiTranscriber(private val client: GeminiClient) : TranscriptionEng
         )
     }
 
+    /** Wraps mono 16-bit [pcm] in a 44-byte RIFF/WAVE header, which is the shape Gemini accepts. */
     private fun wav(pcm: ShortArray, rate: Int): ByteArray {
         val data = pcm.size * 2
         val b = ByteBuffer.allocate(44 + data).order(ByteOrder.LITTLE_ENDIAN)

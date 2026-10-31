@@ -15,6 +15,9 @@ import androidx.compose.ui.unit.dp
 import group.two.knockledge.core.RewindPolicy
 import group.two.knockledge.ui.theme.KnockledgeTheme
 
+/**
+ * Recording status, manual-save button, and buffer-length slider.
+ */
 @Composable
 fun RecordingControls(
     state: KnockRecordingUiState,

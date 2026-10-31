@@ -14,22 +14,20 @@ import group.two.knockledge.pipeline.SummaryRequest
 import group.two.knockledge.pipeline.Transcriber
 import group.two.knockledge.pipeline.TranscriptResult
 import group.two.knockledge.pipeline.TranscriptionEngineType
-import java.io.File
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
-class RewinderNoteSinkTest {
+class KnockledgeNoteSinkTest {
 
     private class FakeSource : AudioSource {
         override fun frames(sampleRate: Int): Flow<ShortArray> = flow { emit(ShortArray(16)) }
@@ -83,7 +81,7 @@ class RewinderNoteSinkTest {
                 override suspend fun summarize(request: SummaryRequest): Summary = Summary("t", "g", emptyList(), 0)
             },
         )
-        val controller = RewinderController(
+        val controller = KnockledgeController(
             FakeSource(),
             NoopSessionHooks,
             pipeline,

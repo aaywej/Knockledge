@@ -1,10 +1,15 @@
 package group.two.knockledge.pipeline
 
+import group.two.knockledge.pipeline.RegexSensitiveFilter.Companion.PLACEHOLDER
+
+
 /** Runs on the transcript before the summarizer ever sees it. */
 interface SensitiveFilter {
+    /** Replaces sensitive spans in [text] with placeholders. */
     fun filter(text: String): FilterResult
 }
 
+/** The filtered [text] and how many spans were replaced. */
 data class FilterResult(
     val text: String,
     val redactedCount: Int,
@@ -40,6 +45,7 @@ class RegexSensitiveFilter : SensitiveFilter {
         Regex("""\b\d{6,}\b"""),
     )
 
+    /** Applies every [rules] regex, replacing matches with [PLACEHOLDER]. */
     override fun filter(text: String): FilterResult {
         var count = 0
         var out = text
@@ -53,6 +59,7 @@ class RegexSensitiveFilter : SensitiveFilter {
     }
 
     companion object {
+        /** Replacement text the summarizer is told never to repeat. */
         const val PLACEHOLDER = "[sensitive detail]"
     }
 }

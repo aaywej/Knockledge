@@ -7,13 +7,13 @@ import com.google.firebase.auth.FirebaseAuth
 import group.two.knockledge.ai.FirebaseAiTranscriber
 import group.two.knockledge.ai.FirebaseGeminiClient
 import group.two.knockledge.pipeline.AudioSegment
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 /**
  * Live Firebase AI (Gemini) transcription test — hits the real network API.

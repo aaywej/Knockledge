@@ -11,9 +11,9 @@ import dagger.BindsInstance
 import dagger.Component
 import dagger.Module
 import dagger.Provides
-import group.two.knockledge.RewinderController
-import group.two.knockledge.RewinderGraph
-import group.two.knockledge.RewinderService
+import group.two.knockledge.KnockledgeController
+import group.two.knockledge.KnockledgeGraph
+import group.two.knockledge.KnockledgeService
 import group.two.knockledge.ai.AiControls
 import group.two.knockledge.ai.AndroidModelStorage
 import group.two.knockledge.ai.AndroidSpeechEngine
@@ -56,22 +56,30 @@ import group.two.knockledge.pipeline.Transcriber
 import group.two.knockledge.settings.AppSettings
 import group.two.knockledge.settings.InputSources
 import group.two.knockledge.settings.KeyValueStore
+import org.jetbrains.annotations.Nullable
 import javax.inject.Named
 import javax.inject.Singleton
-import org.jetbrains.annotations.Nullable
 
+/**
+ * Process-wide graph, created once by KnockledgeApplication and shared by the activity and the service.
+ */
 @Singleton
-@Component(modules = [RewinderModule::class, DataModule::class, KnockRecordingModule::class])
-interface RewinderComponent {
+@Component(modules = [KnockledgeModule::class, DataModule::class, KnockRecordingModule::class])
+interface KnockledgeComponent {
+    /** Auth and notes only, for the network-triggered sync. */
     fun data(): DataGraph
 
-    fun graph(): RewinderGraph
+    /** Recording, AI and settings objects the UI drives. */
+    fun graph(): KnockledgeGraph
 
-    fun inject(service: RewinderService)
+    /** Fills the service's controller and gesture detector; call from onCreate. */
+    fun inject(service: KnockledgeService)
 
+    /** Builds the component; one instance per process. */
     @Component.Factory
     interface Factory {
-        fun create(@BindsInstance app: Application): RewinderComponent
+        /** Binds [app] as the component's only external input. */
+        fun create(@BindsInstance app: Application): KnockledgeComponent
     }
 }
 
@@ -81,12 +89,14 @@ interface RewinderComponent {
  * key-value store here; everything else is shared code.
  */
 @Module
-object RewinderModule {
+object KnockledgeModule {
 
+    /** Settings storage backed by SharedPreferences. */
     @Provides
     @Singleton
     fun keyValueStore(app: Application): KeyValueStore = PrefsStore(app)
 
+    /** Total device RAM, used to pick the default summary model. */
     @Provides
     @Named("totalRamBytes")
     fun totalRamBytes(app: Application): Long {
@@ -94,37 +104,46 @@ object RewinderModule {
         return ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }.totalMem
     }
 
+    /** Inference thread count derived from the CPU core count. */
     @Provides
     @Named("inferenceThreads")
     fun threads(): Int = inferenceThreads(Runtime.getRuntime().availableProcessors())
 
+    /** App settings, defaulting the summary model to the one this phone's RAM can run. */
     @Provides
     @Singleton
     fun settings(store: KeyValueStore, @Named("totalRamBytes") totalRamBytes: Long): AppSettings =
         AppSettings(store, ModelCatalog.summarizerFor(totalRamBytes).id)
 
+    /** Model files under app-private storage. */
     @Provides
     @Singleton
     fun modelStorage(app: Application): ModelStorage = AndroidModelStorage(app)
 
+    /** Downloads model files over HTTP. */
     @Provides
     @Singleton
     fun modelDownloader(): ModelDownloader = HttpModelDownloader()
 
+    /** Download, install and delete of model files, reporting the model selected in settings. */
     @Provides
     @Singleton
     fun modelStore(storage: ModelStorage, downloader: ModelDownloader, settings: AppSettings): ModelStore =
         ModelStore(storage, downloader) { settings.summaryModel.value }
 
+    /** The same store, exposed through its read-only provider interface. */
     @Provides
     fun modelProvider(store: ModelStore): ModelProvider = store
 
+    /** The same store, exposed for locating installed model files. */
     @Provides
     fun modelFiles(store: ModelStore): ModelFiles = store
 
+    /** Offline Whisper recognition through ONNX Runtime. */
     @Provides
     fun speechEngine(): SpeechEngine = AndroidSpeechEngine
 
+    /** Offline summarization through LiteRT-LM. */
     @Provides
     fun textEngine(): TextEngine = AndroidTextEngine
 
@@ -133,6 +152,7 @@ object RewinderModule {
     @Nullable
     fun systemModel(): SystemModelEngine? = null
 
+    /** Whisper transcription, run with the language chosen in settings. */
     @Provides
     @Singleton
     fun onDeviceTranscriber(
@@ -142,6 +162,7 @@ object RewinderModule {
         settings: AppSettings,
     ): OnDeviceTranscriber = OnDeviceTranscriber(engine, files, threads) { settings.language.value }
 
+    /** Firebase AI while the network is up, on-device Whisper otherwise. */
     @Provides
     @Singleton
     fun transcriber(onDevice: OnDeviceTranscriber, app: Application): Transcriber {
@@ -153,6 +174,7 @@ object RewinderModule {
         )
     }
 
+    /** Summarizes with the model chosen in settings and writes in the chosen recap language. */
     @Provides
     @Singleton
     fun summarizer(
@@ -170,13 +192,16 @@ object RewinderModule {
         outputLanguage = { settings.summaryLanguage.value },
     )
 
+    /** Regex rules that blank out passwords, numbers and other personal details in transcripts. */
     @Provides
     fun sensitiveFilter(): SensitiveFilter = RegexSensitiveFilter()
 
+    /** Rewind history, kept in key-value storage across restarts. */
     @Provides
     @Singleton
     fun recents(store: KeyValueStore): RecentsRepository = StoredRecentsRepository(store)
 
+    /** Microphone input. */
     @Provides
     @Singleton
     fun micSource(app: Application): AndroidAudioSource = AndroidAudioSource(app)
@@ -188,6 +213,7 @@ object RewinderModule {
     fun deviceSource(app: Application): AndroidDeviceAudioSource? =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) AndroidDeviceAudioSource(app) else null
 
+    /** Microphone alone, or mixed with phone playback when the user chose that input source. */
     @Provides
     @Singleton
     fun audioSource(
@@ -198,19 +224,23 @@ object RewinderModule {
         settings.inputSource.value == InputSources.MIC_AND_DEVICE
     }
 
+    /** Starts the foreground service when a session starts and stops it when the session ends. */
     @Provides
     @Singleton
     fun sessionHooks(app: Application): SessionHooks = ForegroundServiceHooks(app)
 
+    /** Transcribe, then filter, then summarize. */
     @Provides
     @Singleton
     fun pipeline(transcriber: Transcriber, filter: SensitiveFilter, summarizer: Summarizer): RewindPipeline =
         RewindPipeline(transcriber, filter, summarizer)
 
+    /** Saves a finished rewind as a note for the signed-in user, and skips it when signed out. */
     @Provides
     @Singleton
     fun noteSink(notes: NoteRepository, auth: AuthRepository): NoteSink = SnapshotNoteSink(notes, auth)
 
+    /** The session controller, with the buffer window taken from settings. */
     @Provides
     @Singleton
     fun controller(
@@ -221,9 +251,10 @@ object RewinderModule {
         buffer: LocalAudioRingBuffer,
         sink: NoteSink,
         settings: AppSettings,
-    ): RewinderController =
-        RewinderController(audioSource, hooks, pipeline, recents, buffer, sink, settings.bufferDurationSeconds)
+    ): KnockledgeController =
+        KnockledgeController(audioSource, hooks, pipeline, recents, buffer, sink, settings.bufferDurationSeconds)
 
+    /** Settings and model picker, told at creation whether this device supports playback capture. */
     @Provides
     @Singleton
     fun aiControls(
@@ -234,23 +265,24 @@ object RewinderModule {
         device: AndroidDeviceAudioSource?,
     ): AiControls = AiControls(settings, store, system, totalRamBytes, supportsDeviceAudio = device != null)
 
+    /** Everything the UI needs, in one object. */
     @Provides
     @Singleton
     fun graph(
-        controller: RewinderController,
+        controller: KnockledgeController,
         recents: RecentsRepository,
         models: ModelProvider,
         ai: AiControls,
-    ): RewinderGraph = RewinderGraph(controller, recents, models, ai)
+    ): KnockledgeGraph = KnockledgeGraph(controller, recents, models, ai)
 }
 
-/** Keeps the mic alive in the background and puts Rewinder on the lock screen. */
+/** Keeps the mic alive in the background and puts Knockledge on the lock screen. */
 private class ForegroundServiceHooks(private val context: Context) : SessionHooks {
     override fun onSessionStarted() {
-        context.startForegroundService(Intent(context, RewinderService::class.java))
+        context.startForegroundService(Intent(context, KnockledgeService::class.java))
     }
 
     override fun onSessionStopped() {
-        context.stopService(Intent(context, RewinderService::class.java))
+        context.stopService(Intent(context, KnockledgeService::class.java))
     }
 }

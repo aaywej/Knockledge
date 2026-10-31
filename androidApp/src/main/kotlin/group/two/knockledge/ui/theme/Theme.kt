@@ -22,6 +22,9 @@ private val KnockColorScheme = darkColorScheme(
     onError = KnockInk,
 )
 
+/**
+ * Knockledge Material 3 theme with optional dynamic color on Android 12+.
+ */
 @Composable
 fun KnockledgeTheme(
     content: @Composable () -> Unit,

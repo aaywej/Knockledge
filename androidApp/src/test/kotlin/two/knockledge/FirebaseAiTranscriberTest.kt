@@ -1,7 +1,7 @@
 package group.two.knockledge
 
-import group.two.knockledge.ai.GeminiClient
 import group.two.knockledge.ai.FirebaseAiTranscriber
+import group.two.knockledge.ai.GeminiClient
 import group.two.knockledge.pipeline.AudioSegment
 import group.two.knockledge.pipeline.TranscriptionEngineType
 import kotlinx.coroutines.runBlocking

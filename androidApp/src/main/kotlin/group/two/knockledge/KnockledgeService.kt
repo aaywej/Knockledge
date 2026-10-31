@@ -27,37 +27,43 @@ import javax.inject.Inject
 
 /**
  * Microphone foreground service. Its ongoing notification is the Android version of
- * the "Rewinder in progress" lock screen widget: status, unlock progress, Rewind and Stop.
+ * the "Knockledge in progress" lock screen widget: status, unlock progress, Rewind and Stop.
  *
  * Note: since Android 14 users can swipe away foreground service notifications.
  * Recording continues; the notification comes back on the next update.
  */
-class RewinderService : Service() {
+class KnockledgeService : Service() {
 
-    @Inject lateinit var controller: RewinderController
+    @Inject lateinit var controller: KnockledgeController
     @Inject lateinit var knock: KnockGestureDetector
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var observeJob: Job? = null
     private val notifications by lazy { getSystemService(NOTIFICATION_SERVICE) as NotificationManager }
 
+    /** Not bound: the notification is the only interface. */
     override fun onBind(intent: Intent?): IBinder? = null
 
+    /** Creates the low-importance, lock-screen visible notification channel. */
     override fun onCreate() {
         super.onCreate()
         (application as KnockledgeApplication).component.inject(this)
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Rewinder session",
+            "Knockledge session",
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = "Shows while Rewinder is listening."
+            description = "Shows while Knockledge is listening."
             setShowBadge(false)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         }
         notifications.createNotificationChannel(channel)
     }
 
+    /**
+     * Runs the Stop or Rewind notification action, or else enters the foreground with the mic
+     * (plus media projection if phone audio was granted) and starts publishing state.
+     */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> controller.stop()
@@ -124,11 +130,11 @@ class RewinderService : Service() {
             Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val icon = Icon.createWithResource(this, R.drawable.ic_stat_rewinder)
+        val icon = Icon.createWithResource(this, R.drawable.ic_stat_knockledge)
 
         val builder = Notification.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_stat_rewinder)
-            .setContentTitle("Rewinder in progress")
+            .setSmallIcon(R.drawable.ic_stat_knockledge)
+            .setContentTitle("Knockledge in progress")
             .setContentText(text)
             .setContentIntent(openApp)
             .setOngoing(true)
@@ -154,10 +160,11 @@ class RewinderService : Service() {
 
     private fun actionIntent(action: String, requestCode: Int): PendingIntent = PendingIntent.getService(
         this, requestCode,
-        Intent(this, RewinderService::class.java).setAction(action),
+        Intent(this, KnockledgeService::class.java).setAction(action),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
+    /** Stops gesture listening, cancels the state collector and drops the projection flag. */
     override fun onDestroy() {
         DeviceAudioConsent.foregroundReady = false
         knock.stopListening()
@@ -173,10 +180,9 @@ class RewinderService : Service() {
     )
 
     private companion object {
-        const val CHANNEL_ID = "rewinder_session"
+        const val CHANNEL_ID = "knockledge_session"
         const val NOTIFICATION_ID = 1
         const val ACTION_STOP = "group.two.knockledge.action.STOP"
         const val ACTION_REWIND = "group.two.knockledge.action.REWIND"
     }
 }
-

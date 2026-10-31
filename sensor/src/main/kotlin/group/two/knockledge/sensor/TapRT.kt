@@ -1,19 +1,28 @@
 ﻿package group.two.knockledge.sensor
 
-import group.two.knockledge.sensor.HeuristicEvaluationListener
-import group.two.knockledge.sensor.RejectionReason
-import java.util.*
+import group.two.knockledge.sensor.TapRT.Companion.mMaxTimeGapNs
+import group.two.knockledge.sensor.TapRT.Companion.mMinTimeGapNs
+import java.util.ArrayDeque
 
+/**
+ * Detects knocks on the back of the device from accelerometer samples: differentiates, filters and
+ * peak-checks the signal, then pairs taps within a timing window.
+ *
+ * @param sizeWindowNs duration of the rolling analysis window in nanoseconds.
+ */
 open class TapRT @JvmOverloads constructor(
     val sizeWindowNs: Long
 ): EventIMURT(), BaseTapRT {
 
+    /** Number of back taps still queued for double-tap timing. */
     fun backTapCount() = _tBackTapTimestamps.size
 
+    /** Face of the device a tap was attributed to; only [Back] is validated by the current heuristic. */
     enum class TapClass {
         Front, Back, Left, Right, Top, Bottom, Others
     }
 
+    /** Timing bounds for pairing taps (nanoseconds) and the default amplitude ceilings of the heuristic. */
     companion object {
         const val mMinTimeGapNs = 100000000L
         const val mMaxTimeGapNs = 500000000L
@@ -40,6 +49,13 @@ open class TapRT @JvmOverloads constructor(
         _highpassKey.setPara(0.2f)
     }
 
+    /**
+     * Prunes queued taps older than [mMaxTimeGapNs], then tries to pair the newest tap with an older
+     * one. Pairs closer than [mMinTimeGapNs] are reported as
+     * [RejectionReason.DEBOUNCE_TOO_FAST]; a valid pair is reported, the queue is cleared.
+     *
+     * @return 2 when a double tap fired, 1 while a single tap is still pending, 0 when nothing is queued.
+     */
     override fun checkDoubleTapTiming(timestamp: Long): Int {
         val v0 = _tBackTapTimestamps.iterator()
         while (v0.hasNext()) {
@@ -72,22 +88,27 @@ open class TapRT @JvmOverloads constructor(
         return 1
     }
 
+    /** High-pass filter applied to the key signal; exposed so calibration can retune its coefficient. */
     fun getHighpassKey(): Highpass1C {
         return _highpassKey
     }
 
+    /** Low-pass filter applied to the key signal; exposed so calibration can retune its coefficient. */
     fun getLowpassKey(): Lowpass1C {
         return _lowpassKey
     }
 
+    /** Peak detector fed the negated key signal, used to time the rebound after an impact. */
     fun getNegativePeakDetection(): PeakDetector {
         return _peakDetectorNegative
     }
 
+    /** Peak detector fed the key signal, used to locate the impact peak. */
     fun getPositivePeakDetector(): PeakDetector {
         return _peakDetectorPositive
     }
 
+    /** Builds the key channel from the resampled slope, feeds both peak detectors, and classifies once the window fills. */
     private fun processKeySignalHeursitic(timestamp: Long) {
         val resamplePoint = _resampleAcc.results.point
         val scaledInterval = 2500000.0f / _resampleAcc.getInterval().toFloat()
@@ -117,6 +138,7 @@ open class TapRT @JvmOverloads constructor(
         }
     }
 
+    /** Rejects shock or transverse motion above the ceilings, then accepts only an impact at index 4 with a rebound one or two samples later. */
     private fun recognizeTapHeuristic() {
         val positiveIdMajorPeak = _peakDetectorPositive.getIdMajorPeak()
         val negativeIdMajorPeak = _peakDetectorNegative.getIdMajorPeak() - positiveIdMajorPeak
@@ -141,6 +163,7 @@ open class TapRT @JvmOverloads constructor(
         }
     }
 
+    /** Clears window state via the base reset; [justClearFv] empties the sample buffer in place instead of replacing it. */
     override fun reset(justClearFv: Boolean) {
         super.reset()
         if(justClearFv){
@@ -150,6 +173,11 @@ open class TapRT @JvmOverloads constructor(
         }
     }
 
+    /**
+     * Feeds one accelerometer sample through the resampler and runs the heuristic per resampled
+     * point. Samples whose [type] is not 4 are ignored, and the first accepted sample only seeds the
+     * pipeline.
+     */
     override fun updateData(type: Int, lastX: Float, lastY: Float, lastZ: Float, lastT: Long, interval: Long, isHeuristic: Boolean) {
         _result = TapClass.Others.ordinal
         if (type != 4) {

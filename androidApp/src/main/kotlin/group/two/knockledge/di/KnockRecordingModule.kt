@@ -8,13 +8,16 @@ import group.two.knockledge.sensor.AndroidKnockGestureDetector
 import group.two.knockledge.sensor.KnockGestureDetector
 import javax.inject.Singleton
 
+/** Binds the recording collaborators to their Android implementations, one of each per process. */
 @Module
 abstract class KnockRecordingModule {
 
+    /** The single detector the service listens through. */
     @Binds
     @Singleton
     abstract fun bindGestureDetector(impl: AndroidKnockGestureDetector): KnockGestureDetector
 
+    /** The single buffer the service writes and Rewind snapshots. */
     @Binds
     @Singleton
     abstract fun bindAudioRingBuffer(impl: FileLocalAudioRingBuffer): LocalAudioRingBuffer

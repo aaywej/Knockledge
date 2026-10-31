@@ -59,6 +59,7 @@ object ModelCatalog {
     fun summarizerFor(totalRamBytes: Long): ModelFile =
         if (totalRamBytes >= 3_400_000_000L) qwen2b else qwen08b
 
+    /** Looks up a downloadable Qwen model by [ModelFile.id]; null for unknown ids and for Apple's model. */
     fun qwenById(id: String): ModelFile? = qwenModels.firstOrNull { it.id == id }
 }
 

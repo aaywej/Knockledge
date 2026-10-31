@@ -4,12 +4,17 @@ import group.two.knockledge.audio.AudioConditioner
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeout
 
+/**
+ * Tries the [online] engine first when a connection is available, and falls back
+ * to [offline] on timeout or failure. Audio is conditioned before either sees it.
+ */
 class CompositeTranscriber(
     private val online: TranscriptionEngine,
     private val offline: TranscriptionEngine,
     private val isOnline: () -> Boolean,
     private val timeoutMillis: Long = 10_000,
 ) : Transcriber {
+    /** Conditions [pcm], then transcribes online if possible and offline otherwise. */
     override suspend fun transcribe(pcm: ShortArray, sampleRate: Int): TranscriptResult {
         val conditioned = AudioConditioner.condition(pcm, sampleRate)
         if (conditioned.isEmpty()) {

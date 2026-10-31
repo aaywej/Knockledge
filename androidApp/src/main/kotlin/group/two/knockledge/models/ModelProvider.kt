@@ -18,7 +18,7 @@ data class ModelsState(
 
 /**
  * Platform model store. Android downloads from Hugging Face once, then everything runs offline.
- * Null in RewinderGraph means the platform has no real models yet (iOS for now).
+ * Null in KnockledgeGraph means the platform has no real models yet (iOS for now).
  */
 interface ModelProvider {
     val state: StateFlow<ModelsState>
@@ -26,7 +26,9 @@ interface ModelProvider {
     /** Short label, for example "Whisper turbo + Qwen3.5 2B, about 1.8 GB". */
     val description: String
 
+    /** Fetches the files the current settings need, reporting progress through [state]. */
     fun download()
+    /** Stops a running download. */
     fun cancel()
 
     /** Re-check which files are installed. */

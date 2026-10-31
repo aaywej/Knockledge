@@ -9,6 +9,11 @@ import group.two.knockledge.data.model.SyncStatus
 import group.two.knockledge.data.model.SyncTaskType
 import group.two.knockledge.data.model.TranscriptionEngineType
 import group.two.knockledge.data.repository.NoteRepositoryImpl
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
@@ -17,11 +22,6 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.runBlocking
 
 class NoteRepositoryTest {
     private class FakeNoteDao : NoteDao {

@@ -20,11 +20,15 @@ import group.two.knockledge.data.model.SummaryMetadata
 import group.two.knockledge.data.model.SyncStatus
 import group.two.knockledge.data.model.SyncTaskType
 import group.two.knockledge.data.model.TranscriptMetadata
-import java.io.File
-import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.io.File
+import java.util.UUID
 
+/**
+ * Room-backed [NoteRepository]. Audio is moved into [audioDir] on creation and every write also
+ * queues sync work, so a saved note eventually reaches Storage and Firestore.
+ */
 class NoteRepositoryImpl(
     private val notes: NoteDao,
     private val queue: SyncQueueDao,
@@ -34,11 +38,19 @@ class NoteRepositoryImpl(
     private val onSync: suspend (String) -> Unit = {},
 ) : NoteRepository {
 
+    /** Emits the user's notes newest first, and re-emits whenever Room changes the table. */
     override fun observeNotes(userId: String): Flow<List<Note>> =
         notes.observeNotes(userId).map { list -> list.map { it.toNote() } }
 
+    /** Null when the note does not exist or belongs to another user. */
     override suspend fun getNote(id: String, userId: String): Note? = notes.getNote(id, userId)?.toNote()
 
+    /**
+     * Moves [snapshot]'s file to `[audioDir]/<id>.wav`, inserts a local-only note titled from the
+     * creation time, and queues an audio upload plus a Firestore sync.
+     *
+     * @throws IllegalArgumentException when the audio is not 1 to 300 seconds long or not 16 kHz.
+     */
     override suspend fun createFromSnapshot(snapshot: AudioSnapshotInput, userId: String): Note {
         require(snapshot.durationMs in 1_000..300_000) { "Audio must be 1 to 300 seconds" }
         require(snapshot.sampleRate == 16_000) { "Audio must be 16 kHz" }
@@ -63,6 +75,7 @@ class NoteRepositoryImpl(
         return note
     }
 
+    /** Replaces any existing transcript, drops the note back to local-only and queues a Firestore sync. */
     override suspend fun attachTranscript(noteId: String, userId: String, transcript: TranscriptInput): Note =
         update(noteId, userId) {
             it.copy(
@@ -76,6 +89,7 @@ class NoteRepositoryImpl(
             )
         }
 
+    /** Keeps the current title when [summary]'s title is blank; markers are stored sorted by start time. */
     override suspend fun attachSummary(noteId: String, userId: String, summary: SummaryInput): Note =
         update(noteId, userId) {
             it.copy(
@@ -89,12 +103,14 @@ class NoteRepositoryImpl(
             )
         }
 
+    /** Deletes the row first, then its audio file; an unknown id is a no-op. */
     override suspend fun deleteNote(id: String, userId: String) {
         val note = notes.getNote(id, userId) ?: return
         notes.delete(id, userId)
         File(note.audioLocalPath).delete()
     }
 
+    /** Hands off to the [onSync] callback given at construction; this class does not sync itself. */
     override suspend fun syncPending(userId: String) = onSync(userId)
 
     private suspend fun update(id: String, userId: String, change: (Note) -> Note): Note {

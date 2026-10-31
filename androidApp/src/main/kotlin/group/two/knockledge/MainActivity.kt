@@ -16,9 +16,11 @@ import group.two.knockledge.sensor.AndroidKnockGestureDetector
 import group.two.knockledge.sensor.KnockGestureDetector
 import group.two.knockledge.ui.theme.KnockledgeTheme
 
+/** Hosts the Compose UI and wires the knock gesture detector for the session. */
 class MainActivity : ComponentActivity() {
     private var knockDetector: KnockGestureDetector? = null
 
+    /** Starts the knock detector and sets the Compose content. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -48,6 +50,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Releases the knock detector. */
     override fun onDestroy() {
         super.onDestroy()
         knockDetector?.stopListening()

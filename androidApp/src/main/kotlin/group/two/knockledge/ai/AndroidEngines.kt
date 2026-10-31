@@ -15,6 +15,10 @@ import java.nio.FloatBuffer
 object AndroidSpeechEngine : SpeechEngine {
     private val env: OrtEnvironment by lazy { OrtEnvironment.getEnvironment() }
 
+    /**
+     * Runs Whisper on [pcm], first trimming it with [vadModelPath] when that file exists, and
+     * returns the decoded text. A failed run yields a status string instead of an exception.
+     */
     override fun transcribe(
         modelPath: String,
         pcm: ShortArray,
@@ -99,6 +103,10 @@ object AndroidSpeechEngine : SpeechEngine {
  * Offline text summarization engine using LiteRT-LM.
  */
 object AndroidTextEngine : TextEngine {
+    /**
+     * Only loads [modelPath] and returns a fixed status string: this build verifies the engine
+     * opens, it does not generate text from [prompt]. Errors come back as "Error: ..." strings.
+     */
     override fun complete(
         modelPath: String,
         prompt: String,

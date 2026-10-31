@@ -11,11 +11,13 @@ import group.two.knockledge.data.model.AiEngineType
 import group.two.knockledge.pipeline.Summary
 import group.two.knockledge.pipeline.TranscriptResult
 import java.io.File
-import group.two.knockledge.data.model.TriggerType as ModelTriggerType
 import group.two.knockledge.data.model.TranscriptionEngineType as ModelEngineType
+import group.two.knockledge.data.model.TriggerType as ModelTriggerType
 import group.two.knockledge.pipeline.TranscriptionEngineType as PipelineEngineType
 
+/** Turns one finished recording, its transcript and its summary into a stored note. */
 fun interface NoteSink {
+    /** Persists the recording; implementations decide where the note lands. */
     suspend fun record(
         file: File,
         startEpochMs: Long,
@@ -26,10 +28,15 @@ fun interface NoteSink {
     )
 }
 
+/**
+ * [NoteSink] that writes through [NoteRepository]: create the note, then attach the transcript and
+ * the summary. The pipeline produces no chapter markers, so the saved summary has none.
+ */
 class SnapshotNoteSink(
     private val notes: NoteRepository,
     private val auth: AuthRepository,
 ) : NoteSink {
+    /** Saves nothing when no user is signed in; otherwise makes three repository writes. */
     override suspend fun record(
         file: File,
         startEpochMs: Long,

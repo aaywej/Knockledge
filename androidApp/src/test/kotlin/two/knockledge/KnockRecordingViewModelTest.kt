@@ -16,8 +16,8 @@ import kotlin.test.assertTrue
 
 class KnockRecordingViewModelTest {
     private class FakeBackend(var canSave: Boolean = true) : RecordingBackend {
-        val flow = MutableStateFlow(RewinderState())
-        override val state: StateFlow<RewinderState> = flow
+        val flow = MutableStateFlow(KnockledgeState())
+        override val state: StateFlow<KnockledgeState> = flow
         var saves = 0
         var starts = 0
         var stops = 0

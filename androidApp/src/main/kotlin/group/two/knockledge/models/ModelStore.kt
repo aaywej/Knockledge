@@ -23,11 +23,13 @@ interface ModelStorage {
     /** Replaces [to] with [from]. */
     fun move(from: String, to: String): Boolean
 
+    /** Deletes the file at [path]; false when it could not be removed. */
     fun delete(path: String): Boolean
 }
 
 /** Streams [url] into [partPath], resuming after [existingBytes]. Returns when complete. */
 interface ModelDownloader {
+    /** Streams [url] to [partPath], resuming after [existingBytes]; [onProgress] reports bytes written so far. */
     suspend fun download(url: String, partPath: String, existingBytes: Long, onProgress: (writtenBytes: Long) -> Unit)
 }
 
@@ -39,6 +41,7 @@ interface ModelFiles {
     /** The selected Qwen file, or null when the selected summarizer is not a downloaded model (Apple). */
     val summarizerModel: ModelFile?
 
+    /** True when every file the current settings need is installed. */
     val isReady: Boolean
 }
 
@@ -99,11 +102,13 @@ class ModelStore(
         }
     }
 
+    /** Null when the file is missing or empty, so a truncated download is never handed out. */
     override fun pathOf(model: ModelFile): String? {
         val path = pathFor(model.fileName)
         return if (storage.sizeOf(path) > 0L) path else null
     }
 
+    /** Every catalogue model with its install state, flagged when the current settings need it. */
     fun entries(): List<ModelEntry> {
         val needed = files.map { it.id }.toSet()
         return ModelCatalog.all.map { ModelEntry(it, installed = pathOf(it) != null, needed = it.id in needed) }
@@ -121,12 +126,18 @@ class ModelStore(
         }
     }
 
+    /** Deletes the model file and any partial download, then rescans. */
     fun remove(model: ModelFile) {
         storage.delete(pathFor(model.fileName))
         storage.delete(pathFor(model.fileName + ".part"))
         _state.value = scan()
     }
 
+    /**
+     * Downloads the missing files in order on a background dispatcher. Returns immediately if a
+     * download is already running. Any failure surfaces in [ModelsState.error] and leaves the
+     * `.part` files in place so the user can resume.
+     */
     override fun download() {
         if (job?.isActive == true) return
         _state.update { it.copy(downloading = true, error = null, totalBytes = totalBytes) }
@@ -159,6 +170,7 @@ class ModelStore(
         }
     }
 
+    /** Stops the job; `.part` files stay on disk so the next [download] resumes from them. */
     override fun cancel() {
         job?.cancel()
         job = null
@@ -167,6 +179,7 @@ class ModelStore(
 
     private fun pathFor(name: String) = storage.directory.trimEnd('/') + "/" + name
 
+    /** Installed files count at catalogue size, partial downloads at their bytes on disk. */
     private fun scan(): ModelsState {
         val downloaded = files.sumOf { m ->
             if (pathOf(m) != null) m.approxBytes else storage.sizeOf(pathFor(m.fileName + ".part")).coerceAtLeast(0L)

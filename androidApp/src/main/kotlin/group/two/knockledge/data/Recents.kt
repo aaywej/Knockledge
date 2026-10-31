@@ -3,20 +3,20 @@ package group.two.knockledge.data
 import group.two.knockledge.data.model.Note
 import group.two.knockledge.pipeline.Summary
 import group.two.knockledge.settings.KeyValueStore
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /** A saved rewind. Summary-only view of a rewind; audio and transcripts live in NoteRepository. */
 data class Recent(
@@ -29,9 +29,13 @@ data class Recent(
     val endedAtMillis: Long,
 )
 
+/** Store of saved rewinds, listed newest first. */
 interface RecentsRepository {
+    /** Saved rewinds, newest first. */
     val recents: StateFlow<List<Recent>>
+    /** Saves a finished summary and returns the stored recent. */
     suspend fun add(summary: Summary, startedAtMillis: Long, endedAtMillis: Long): Recent
+    /** Removes the recent with this id; unknown ids are ignored. */
     suspend fun delete(id: Long)
 }
 
@@ -45,6 +49,7 @@ class InMemoryRecentsRepository : RecentsRepository {
 
     override val recents: StateFlow<List<Recent>> = items.asStateFlow()
 
+    /** Saves a finished summary and returns the stored recent. */
     override suspend fun add(summary: Summary, startedAtMillis: Long, endedAtMillis: Long): Recent {
         val recent = Recent(
             id = nextId++,
@@ -59,6 +64,7 @@ class InMemoryRecentsRepository : RecentsRepository {
         return recent
     }
 
+    /** Removes the recent with this id; unknown ids are ignored. */
     override suspend fun delete(id: Long) {
         items.update { list -> list.filterNot { it.id == id } }
     }
@@ -79,6 +85,7 @@ class StoredRecentsRepository(
 
     override val recents: StateFlow<List<Recent>> = items.asStateFlow()
 
+    /** Persists the recent, keeping only the newest maxKept entries. */
     override suspend fun add(summary: Summary, startedAtMillis: Long, endedAtMillis: Long): Recent = lock.withLock {
         val recent = Recent(
             id = nextId++,
@@ -94,6 +101,7 @@ class StoredRecentsRepository(
         recent
     }
 
+    /** Removes the recent and rewrites the store. */
     override suspend fun delete(id: Long) = lock.withLock {
         items.update { list -> list.filterNot { it.id == id } }
         save()
@@ -119,6 +127,7 @@ object RecentsCodec {
     private const val POINT = '\u001D'
     private const val VERSION = "1"
 
+    /** Renders recents in the plain-text store format. */
     fun encode(list: List<Recent>): String = list.joinToString(RECORD.toString()) { r ->
         listOf(
             VERSION,
@@ -132,6 +141,7 @@ object RecentsCodec {
         ).joinToString(FIELD.toString())
     }
 
+    /** Parses stored text; records in another version or with broken fields are dropped. */
     fun decode(text: String): List<Recent> {
         if (text.isEmpty()) return emptyList()
         return text.split(RECORD).mapNotNull { record ->
@@ -175,9 +185,11 @@ class NoteBackedRecentsRepository(
         }
         .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
+    /** Always throws: notes are created through NoteRepository.createFromSnapshot. */
     override suspend fun add(summary: Summary, startedAtMillis: Long, endedAtMillis: Long): Recent =
         throw UnsupportedOperationException("Create notes via NoteRepository.createFromSnapshot")
 
+    /** Deletes the note behind this recent; the id is the note id hashed, so the first match is looked up. */
     override suspend fun delete(id: Long) {
         val uid = auth.currentUser.value?.uid ?: return
         notes.observeNotes(uid).first().firstOrNull { it.recentId() == id }?.let { notes.deleteNote(it.id, uid) }

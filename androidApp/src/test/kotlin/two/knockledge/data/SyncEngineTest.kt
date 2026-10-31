@@ -14,15 +14,15 @@ import group.two.knockledge.data.model.TriggerType
 import group.two.knockledge.data.remote.AudioUploads
 import group.two.knockledge.data.remote.NoteSyncSource
 import group.two.knockledge.data.repository.SyncEngine
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.runBlocking
 
 class SyncEngineTest {
 

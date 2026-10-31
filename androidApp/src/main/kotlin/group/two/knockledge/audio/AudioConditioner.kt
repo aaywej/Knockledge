@@ -3,10 +3,15 @@ package group.two.knockledge.audio
 import group.two.knockledge.core.AudioGain
 import kotlin.math.sqrt
 
+/** Trims a clip to its audible part: normalizes the gain, then cuts silent 20 ms frames from both ends. */
 object AudioConditioner {
     private const val FRAME_MS = 20
     private const val SPEECH_RMS = 330.0
 
+    /**
+     * Returns a gain-normalized copy of [pcm] spanning the first to the last loud 20 ms frame at
+     * [sampleRate], or an empty array when no frame reaches the speech threshold.
+     */
     fun condition(pcm: ShortArray, sampleRate: Int): ShortArray {
         val gained = pcm.copyOf()
         AudioGain.normalizeInPlace(gained)

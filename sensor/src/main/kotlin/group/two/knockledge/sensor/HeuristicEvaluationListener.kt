@@ -25,6 +25,7 @@ interface HeuristicEvaluationListener {
     fun onDoubleKnockTriggered(intervalMs: Long)
 }
 
+/** Reasons a candidate knock can be discarded, used for diagnostic bucketing. */
 enum class RejectionReason {
     PEAK_NOT_ALIGNED,
     REBOUND_OUT_OF_BOUNDS,

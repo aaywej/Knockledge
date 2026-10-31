@@ -28,7 +28,7 @@ import kotlin.math.sqrt
  * is kept. 48 kHz inputs are averaged down to 16 kHz.
  *
  * [status] reports the routed device and whether Android is muting this app, shown on the
- * home screen. Logcat tag "RewinderAudio" has the details.
+ * home screen. Logcat tag "KnockledgeAudio" has the details.
  * The caller must hold RECORD_AUDIO (MainActivity asks before starting).
  */
 class AndroidAudioSource(context: Context) : AudioSource {
@@ -38,13 +38,17 @@ class AndroidAudioSource(context: Context) : AudioSource {
     @Volatile private var active: AudioRecord? = null
     @Volatile private var activeLabel: String = ""
 
+    /**
+     * Emits mono chunks of about 100 ms, reopened whenever the input dies and resumed once a
+     * call ends. Closes the flow with [IllegalStateException] when no mic can be opened at all.
+     */
     @SuppressLint("MissingPermission")
     override fun frames(sampleRate: Int): Flow<ShortArray> = callbackFlow {
         val producer = this
         unmuteIfStuck()
         val running = AtomicBoolean(true)
 
-        val reader = thread(name = "rewinder-audio", isDaemon = true) {
+        val reader = thread(name = "knockledge-audio", isDaemon = true) {
             var record: AudioRecord? = null
             var reopenAfterSilentSeconds = 3L
             try {
@@ -144,6 +148,7 @@ class AndroidAudioSource(context: Context) : AudioSource {
         }
     }
 
+    /** Routed input plus any muting problem, or null while no recording is open. */
     override fun status(): InputStatus? {
         val record = active ?: return null
         val device = deviceName(record.routedDevice)
@@ -152,7 +157,7 @@ class AndroidAudioSource(context: Context) : AudioSource {
         val others = runCatching { audioManager.activeRecordingConfigurations.size - 1 }.getOrDefault(0)
         val warning = when {
             inCall() -> "A call is using the microphone. Android mutes other apps during calls; " +
-                "Rewinder hears again when it ends (phone audio, if on, keeps recording)."
+                "Knockledge hears again when it ends (phone audio, if on, keeps recording)."
             silenced -> "Android is muting this app's mic (privacy toggle or another app has priority)."
             audioManager.isMicrophoneMute -> "The phone's microphone is muted system-wide."
             others > 0 -> "Another app is also recording."
@@ -261,7 +266,7 @@ class AndroidAudioSource(context: Context) : AudioSource {
     }
 
     private companion object {
-        const val TAG = "RewinderAudio"
+        const val TAG = "KnockledgeAudio"
         const val SILENCE_PEAK = 4
         val SOURCES = listOf(
             MediaRecorder.AudioSource.MIC to "MIC",
@@ -272,4 +277,3 @@ class AndroidAudioSource(context: Context) : AudioSource {
         )
     }
 }
-

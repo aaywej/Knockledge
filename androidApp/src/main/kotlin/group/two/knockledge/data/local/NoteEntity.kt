@@ -18,6 +18,7 @@ import group.two.knockledge.data.model.TranscriptMetadata
 import group.two.knockledge.data.model.TranscriptionEngineType
 import group.two.knockledge.data.model.TriggerType
 
+/** Room row for a note; transcript and summary columns are nullable until the pipeline fills them. */
 @Entity(
     tableName = "notes",
     indices = [Index("user_id"), Index(value = ["created_at_epoch_ms"])],
@@ -45,6 +46,7 @@ data class NoteEntity(
     @ColumnInfo(name = "sync_status") val syncStatus: SyncStatus,
 )
 
+/** Room row for one queued sync task; deleting its note cascades the task away. */
 @Entity(
     tableName = "sync_queue",
     foreignKeys = [
@@ -68,6 +70,7 @@ data class SyncQueueEntity(
     @ColumnInfo(name = "updated_at_epoch_ms") val updatedAtEpochMs: Long,
 )
 
+/** Rebuilds the domain model, supplying defaults (no diarization, Whisper, on-device) for nullable transcript and summary columns. */
 fun NoteEntity.toNote() = Note(
     id = id,
     userId = userId,
@@ -95,6 +98,7 @@ fun NoteEntity.toNote() = Note(
     syncStatus = syncStatus,
 )
 
+/** Flattens the note into its columns, turning absent transcript or summary into nulls. */
 fun Note.toEntity() = NoteEntity(
     id = id,
     userId = userId,

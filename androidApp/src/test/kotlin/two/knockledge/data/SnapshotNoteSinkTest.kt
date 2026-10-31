@@ -8,15 +8,15 @@ import group.two.knockledge.data.repository.SnapshotNoteSink
 import group.two.knockledge.pipeline.Summary
 import group.two.knockledge.pipeline.TranscriptResult
 import group.two.knockledge.pipeline.TranscriptSentence
-import java.io.File
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
+import java.io.File
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class SnapshotNoteSinkTest {
 

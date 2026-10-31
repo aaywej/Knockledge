@@ -23,6 +23,10 @@ import kotlinx.coroutines.withContext
  * Implementations load the model, transcribe, free it, and throw on failure.
  */
 interface SpeechEngine {
+    /**
+     * Returns the transcript of [pcm]. [language] is one of [TranscriptionLanguages], [prompt]
+     * biases spelling, and [vadModelPath] trims silence when the file exists.
+     */
     fun transcribe(
         modelPath: String,
         pcm: ShortArray,
@@ -35,6 +39,10 @@ interface SpeechEngine {
 
 /** llama.cpp, one completion per rewind. Android: JNI (llama module). iOS: llama.xcframework. */
 interface TextEngine {
+    /**
+     * Returns the completion for [prompt], at most [maxTokens] new tokens, sampling set by
+     * [temperature], [topP], [topK] and [presencePenalty]; [nCtx] is the context window size.
+     */
     fun complete(
         modelPath: String,
         prompt: String,
@@ -59,6 +67,7 @@ interface SystemModelEngine {
     /** Null when usable, otherwise why not (for example "Turn on Apple Intelligence"). */
     fun unavailableReason(): String?
 
+    /** Returns the answer to [prompt] written under [instructions]; throws when the model fails. */
     fun complete(instructions: String, prompt: String, temperature: Float): String
 }
 
@@ -76,6 +85,7 @@ class OnDeviceTranscriber(
     private val threads: Int,
     private val language: () -> String = { TranscriptionLanguages.FILIPINO },
 ) {
+    /** Returns the cleaned transcript, or an empty string when the Whisper file is not installed. */
     suspend fun transcribe(pcm: ShortArray): String =
         withContext(Dispatchers.Default) {
             val model = files.pathOf(ModelCatalog.whisper)
@@ -108,6 +118,10 @@ class OnDeviceSummarizer(
     private val fallback: Summarizer = PlaceholderSummarizer(),
     private val outputLanguage: () -> String = { SummaryLanguages.AUTO },
 ) : Summarizer {
+    /**
+     * Falls back to [fallback] when Whisper or a summarizer file is missing, and to an installed
+     * Qwen model when Apple's model is unavailable, fails, or cannot write Filipino.
+     */
     override suspend fun summarize(request: SummaryRequest): Summary = withContext(Dispatchers.Default) {
         val language = outputLanguage()
         // Without Whisper there is no transcript to summarize: show the setup placeholder.

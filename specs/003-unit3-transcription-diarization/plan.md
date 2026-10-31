@@ -72,7 +72,7 @@ androidApp/src/main/kotlin/group/two/knockledge/
 │   ├── SensitiveFilter.kt       # PII filtering
 │   └── TextFormats.kt           # Text normalization and Whisper initial prompts
 └── di/
-    └── RewinderComponent.kt     # Dagger DI bindings for Transcriber and engines
+    └── KnockledgeComponent.kt   # Dagger DI bindings for Transcriber and engines
 
 androidApp/src/test/kotlin/two/knockledge/
 ├── AudioGainTest.kt             # Existing audio gain tests

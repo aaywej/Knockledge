@@ -8,20 +8,20 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import group.two.knockledge.data.AudioSnapshotInput
+import group.two.knockledge.data.local.KnockledgeDatabase
 import group.two.knockledge.data.model.SyncStatus
 import group.two.knockledge.data.model.TriggerType
 import group.two.knockledge.data.remote.FirebaseStorageSource
 import group.two.knockledge.data.remote.FirestoreDataSource
 import group.two.knockledge.data.repository.NoteRepositoryImpl
 import group.two.knockledge.data.repository.SyncEngine
-import group.two.knockledge.data.local.KnockledgeDatabase
-import java.io.File
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
 
 /**
  * Runs ONLY against the Firebase Local Emulator Suite — never production.

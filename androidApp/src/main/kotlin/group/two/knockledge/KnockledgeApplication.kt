@@ -7,24 +7,32 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
-import group.two.knockledge.di.DaggerRewinderComponent
-import group.two.knockledge.di.RewinderComponent
+import group.two.knockledge.di.DaggerKnockledgeComponent
+import group.two.knockledge.di.KnockledgeComponent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
+/**
+ * Owns the process-wide dependency graph and installs App Check before any Firebase call.
+ */
 class KnockledgeApplication : Application() {
 
-    lateinit var component: RewinderComponent
+    /** Dagger graph root, built once in [onCreate]. */
+    lateinit var component: KnockledgeComponent
         private set
 
-    /** One graph per process, shared by MainActivity and RewinderService. */
-    lateinit var graph: RewinderGraph
+    /** One graph per process, shared by MainActivity and KnockledgeService. */
+    lateinit var graph: KnockledgeGraph
         private set
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    /**
+     * Installs App Check (debug secret in debug builds, Play Integrity in release), builds the
+     * component, then syncs queued notes whenever the network comes back.
+     */
     override fun onCreate() {
         super.onCreate()
         FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
@@ -40,7 +48,7 @@ class KnockledgeApplication : Application() {
                 DebugAppCheckProviderFactory.getInstance()
             } else PlayIntegrityAppCheckProviderFactory.getInstance(),
         )
-        component = DaggerRewinderComponent.factory().create(this)
+        component = DaggerKnockledgeComponent.factory().create(this)
         graph = component.graph()
         getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(
             object : ConnectivityManager.NetworkCallback() {

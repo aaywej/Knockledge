@@ -16,12 +16,12 @@ import group.two.knockledge.pipeline.Summarizer
 import group.two.knockledge.pipeline.Transcriber
 
 /**
- * The app's dependency aggregate. Dagger builds the real one (see di/RewinderComponent);
+ * The app's dependency aggregate. Dagger builds the real one (see di/KnockledgeComponent);
  * the secondary constructor keeps previews and tests working without it: pass a microphone
  * and an "in progress" surface and get placeholders for everything else.
  */
-class RewinderGraph(
-    val controller: RewinderController,
+class KnockledgeGraph(
+    val controller: KnockledgeController,
     val recents: RecentsRepository,
     /** On-device AI model store; null where the platform has none yet. */
     val models: ModelProvider?,
@@ -37,7 +37,7 @@ class RewinderGraph(
         recents: RecentsRepository = InMemoryRecentsRepository(),
         buffer: LocalAudioRingBuffer,
     ) : this(
-        controller = RewinderController(
+        controller = KnockledgeController(
             audioSource = audioSource,
             hooks = hooks,
             pipeline = RewindPipeline(transcriber, filter, summarizer),

@@ -7,11 +7,14 @@ import group.two.knockledge.core.formatDuration
  * They let the full flow run end to end on both platforms today.
  */
 class PlaceholderTranscriber : Transcriber {
+    /** Returns an empty transcript; stand-in until a real engine is connected. */
     override suspend fun transcribe(pcm: ShortArray, sampleRate: Int): TranscriptResult =
         TranscriptResult(emptyList(), "", false, "unknown", TranscriptionEngineType.LOCAL_WHISPER)
 }
 
+/** Returns a fixed card saying the models are not connected yet. */
 class PlaceholderSummarizer : Summarizer {
+    /** Builds the placeholder card, echoing the captured duration and redaction count. */
     override suspend fun summarize(request: SummaryRequest): Summary = Summary(
         title = "Untitled rewind",
         gist = "Captured ${formatDuration(request.durationMillis)} of audio. The on-device " +

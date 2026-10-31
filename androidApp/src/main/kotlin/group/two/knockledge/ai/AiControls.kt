@@ -21,9 +21,13 @@ data class SummaryModelOption(
     val needsDownload: Boolean,
 )
 
+/** One row in a language or input-source picker; [id] is the value saved in Settings. */
 data class LanguageOption(val id: String, val label: String, val detail: String)
 
 /** What Settings and the model picker read and change. Shared by both apps. */
+/**
+ * Controls AI-related settings and interactions.
+ */
 class AiControls(
     val settings: AppSettings,
     private val models: ModelStore,
@@ -32,7 +36,11 @@ class AiControls(
     /** False where the platform cannot capture its own playback. */
     val supportsDeviceAudio: Boolean = false,
 ) {
-    fun summaryOptions(): List<SummaryModelOption> {
+    /** Every summary model the picker can offer: Qwen first, then the built-in model when present. */
+    /**
+ * Returns a list of summary model options for the picker.
+ */
+fun summaryOptions(): List<SummaryModelOption> {
         val options = mutableListOf<SummaryModelOption>()
         system?.let { apple ->
             val reason = apple.unavailableReason()
@@ -52,7 +60,10 @@ class AiControls(
         return qwen + options
     }
 
-    private fun qwenOption(file: ModelFile, note: String): SummaryModelOption {
+    /**
+ * Creates a SummaryModelOption for a Qwen model.
+ */
+private fun qwenOption(file: ModelFile, note: String): SummaryModelOption {
         val installed = models.pathOf(file) != null
         val lowRam = file == ModelCatalog.qwen2b && ModelCatalog.summarizerFor(totalRamBytes) != file
         val detail = buildString {
@@ -64,27 +75,42 @@ class AiControls(
         return SummaryModelOption(file.id, file.label, detail, enabled = true, needsDownload = !installed)
     }
 
-    fun selectSummaryModel(id: String) {
+    /** Saves [id] as the summary model and re-reads which model files are installed. */
+    /**
+ * Selects the summary model by its ID and refreshes the model store.
+ */
+fun selectSummaryModel(id: String) {
         settings.setSummaryModel(id)
         models.refresh()
     }
 
+    /** Spoken language choices for Whisper. */
     val languageOptions: List<LanguageOption> = listOf(
         LanguageOption(TranscriptionLanguages.FILIPINO, "Filipino / Taglish", "Best for Tagalog and mixed speech"),
         LanguageOption(TranscriptionLanguages.ENGLISH, "English", "Best when everyone speaks English"),
         LanguageOption(TranscriptionLanguages.AUTO, "Auto-detect", "Whisper guesses; may turn Tagalog into English"),
     )
 
-    fun selectLanguage(id: String) = settings.setLanguage(id)
+    /** Saves [id] as the spoken language; the next transcription uses it. */
+    /**
+ * Sets the transcription language.
+ */
+fun selectLanguage(id: String) = settings.setLanguage(id)
 
+    /** Language choices for the written recap, independent of the spoken language. */
     val summaryLanguageOptions: List<LanguageOption> = listOf(
         LanguageOption(SummaryLanguages.AUTO, "Match the speakers", "English, Filipino or Taglish, whichever was used most"),
         LanguageOption(SummaryLanguages.FILIPINO, "Filipino", "Recaps always in Filipino (Tagalog)"),
         LanguageOption(SummaryLanguages.ENGLISH, "English", "Recaps always in English"),
     )
 
-    fun selectSummaryLanguage(id: String) = settings.setSummaryLanguage(id)
+    /** Saves [id] as the recap language; the next summary uses it. */
+    /**
+ * Sets the summary language.
+ */
+fun selectSummaryLanguage(id: String) = settings.setSummaryLanguage(id)
 
+    /** What to record: the microphone alone, or the microphone mixed with phone playback. */
     val inputOptions: List<LanguageOption> = listOf(
         LanguageOption(InputSources.MIC, "Microphone", "Voices in the room"),
         LanguageOption(
@@ -95,13 +121,26 @@ class AiControls(
         ),
     )
 
-    fun selectInput(id: String) = settings.setInputSource(id)
+    /** Saves [id] as the input source; it applies from the next recording. */
+    /**
+ * Sets the input source for recording.
+ */
+fun selectInput(id: String) = settings.setInputSource(id)
 
-    fun modelEntries(): List<ModelEntry> = models.entries()
+    /** Every catalogue model with its install state, for the storage list in Settings. */
+    /**
+ * Returns all model entries with their installation state.
+ */
+fun modelEntries(): List<ModelEntry> = models.entries()
 
-    fun removeModel(file: ModelFile) = models.remove(file)
+    /** Deletes [file]'s download, partial or complete, and re-reads what is stored. */
+    /**
+ * Removes the specified model file from storage.
+ */
+fun removeModel(file: ModelFile) = models.remove(file)
 
     companion object {
+        /** Renders [bytes] as "N MB" or "N.N GB" for the picker's detail line. */
         fun gigabytes(bytes: Long): String {
             val mb = bytes / 1_000_000L
             return if (mb >= 1000) "${mb / 1000}.${(mb % 1000) / 100} GB" else "$mb MB"

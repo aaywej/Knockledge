@@ -39,7 +39,8 @@ import kotlin.math.sqrt
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
-data class RewinderState(
+/** Immutable snapshot of the session, published to the UI via [KnockledgeController.state]. */
+data class KnockledgeState(
     val isRunning: Boolean = false,
     /** Audio cached on disk since Start, capped at the configured window. Every Rewind uses all of it. */
     val bufferedMillis: Long = 0L,
@@ -56,6 +57,7 @@ data class RewinderState(
     val inputWarning: String? = null,
     val error: String? = null,
 ) {
+    /** True while at least one rewind is still being transcribed or summarized. */
     val isSummarizing: Boolean
         get() = pendingRewinds > 0
 
@@ -67,6 +69,7 @@ data class RewinderState(
     val unlockProgress: Float
         get() = (bufferedMillis.toFloat() / RewindPolicy.MIN_REWIND_MILLIS).coerceIn(0f, 1f)
 
+    /** Milliseconds of buffering left before Rewind unlocks; 0 once unlocked. */
     val millisUntilUnlock: Long
         get() = (RewindPolicy.MIN_REWIND_MILLIS - bufferedMillis).coerceAtLeast(0L)
 }
@@ -78,7 +81,7 @@ data class RewinderState(
  * buffer needs no locks.
  */
 @OptIn(ExperimentalCoroutinesApi::class, ExperimentalTime::class)
-class RewinderController(
+class KnockledgeController(
     private val audioSource: AudioSource,
     private val hooks: SessionHooks,
     private val pipeline: RewindPipeline,
@@ -98,8 +101,10 @@ class RewinderController(
     private var silentMillis = 0L
     private var silenceReported = false
 
-    private val _state = MutableStateFlow(RewinderState())
-    val state: StateFlow<RewinderState> = _state.asStateFlow()
+    private val _state = MutableStateFlow(KnockledgeState())
+
+    /** Current session state, observed by the UI. */
+    val state: StateFlow<KnockledgeState> = _state.asStateFlow()
 
     private val _created = MutableSharedFlow<Long>(extraBufferCapacity = 4)
 
@@ -115,9 +120,10 @@ class RewinderController(
     /** Emits the id of each new Recent, so the UI can open it. */
     val createdRecents: SharedFlow<Long> = _created.asSharedFlow()
 
+    /** Starts capturing audio into the ring buffer. No-op when already running. */
     fun start() {
         if (captureJob?.isActive == true) return
-        _state.value = RewinderState(isRunning = true, windowMillis = _state.value.windowMillis)
+        _state.value = KnockledgeState(isRunning = true, windowMillis = _state.value.windowMillis)
         silentMillis = 0L
         silenceReported = false
         hooks.onSessionStarted()
@@ -153,6 +159,7 @@ class RewinderController(
         }
     }
 
+    /** Stops capturing and clears the buffer. No-op when not running. */
     fun stop() {
         val job = captureJob ?: return
         captureJob = null
@@ -170,6 +177,7 @@ class RewinderController(
         hooks.onSessionStopped()
     }
 
+    /** Starts when stopped, stops when running. */
     fun toggle() = if (_state.value.isRunning) stop() else start()
 
     /**
@@ -225,12 +233,15 @@ class RewinderController(
         }
     }
 
+    /** Deletes the Recent with [id]. */
     fun delete(id: Long) {
         scope.launch { recents.delete(id) }
     }
 
+    /** Publishes [message] as the current error, shown until [clearError]. */
     fun reportError(message: String) = _state.update { it.copy(error = message) }
 
+    /** Dismisses the current error. */
     fun clearError() = _state.update { it.copy(error = null) }
 
     /**
@@ -275,10 +286,9 @@ class RewinderController(
     private companion object {
         const val SILENCE_MESSAGE =
             "The microphone is sending pure silence. During a phone or video call the system gives the mic " +
-                "to the call app only; Rewinder hears again when the call ends. Otherwise check Microphone access " +
+                "to the call app only; Knockledge hears again when the call ends. Otherwise check Microphone access " +
                 "in Quick Settings / Control Center and close any recorder. Emulator: adb emu avd hostmicon."
         const val FLOOR_DB = -72.0 // near silence
         const val CEIL_DB = -24.0  // close, normal speech
     }
 }
-

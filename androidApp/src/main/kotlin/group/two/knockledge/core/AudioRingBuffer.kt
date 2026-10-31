@@ -6,10 +6,10 @@ import kotlin.math.max
  * Fixed size, in-memory ring buffer of PCM16 samples. Never touches disk.
  *
  * Positions are absolute sample counts since the session started. An optional "cut"
- * (advanceCut) can exclude audio already summarized; Rewinder currently does not use it,
+ * (advanceCut) can exclude audio already summarized; Knockledge currently does not use it,
  * because rewinds are allowed to overlap.
  *
- * Not thread safe on purpose: RewinderController confines every call to a
+ * Not thread safe on purpose: KnockledgeController confines every call to a
  * single-threaded dispatcher.
  */
 class AudioRingBuffer(
@@ -26,8 +26,10 @@ class AudioRingBuffer(
 
     val samplesSinceCut: Int get() = (written - start).toInt()
 
+    /** Length of the buffered audio since the cut, rounded down to whole milliseconds. */
     fun millisSinceCut(): Long = samplesSinceCut * 1000L / sampleRate
 
+    /** Appends [length] samples to the ring, dropping the oldest audio when the window is full. */
     fun write(chunk: ShortArray, length: Int = chunk.size) {
         var offset = 0
         var remaining = length

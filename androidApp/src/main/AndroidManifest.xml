@@ -36,7 +36,7 @@
         </activity>
 
         <service
-            android:name=".RewinderService"
+            android:name=".KnockledgeService"
             android:exported="false"
             android:foregroundServiceType="microphone|mediaProjection" />
     </application>

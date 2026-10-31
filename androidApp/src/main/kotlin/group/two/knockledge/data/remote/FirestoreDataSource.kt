@@ -4,17 +4,21 @@ import com.google.android.gms.tasks.Task
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import group.two.knockledge.data.model.Note
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import kotlinx.coroutines.suspendCancellableCoroutine
 
+/** Writes note documents to the cloud. */
 interface NoteSyncSource {
+    /** Writes or merges [document] as the note's cloud document. */
     suspend fun upsertNote(userId: String, noteId: String, document: Map<String, Any?>)
 }
 
+/** Firestore notes at users/{userId}/notes/{noteId}. */
 class FirestoreDataSource(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
 ) : NoteSyncSource {
+    /** Merges the fields into the stored document, creating it when absent and keeping fields the map omits. */
     override suspend fun upsertNote(userId: String, noteId: String, document: Map<String, Any?>) {
         firestore.collection("users").document(userId)
             .collection("notes").document(noteId)
@@ -22,6 +26,7 @@ class FirestoreDataSource(
     }
 }
 
+/** Field map for the cloud schema: enums go by name and a missing transcript or summary is left out, not nulled. */
 fun Note.toFirestoreDocument(): Map<String, Any?> = mapOf(
     "id" to id,
     "userId" to userId,

@@ -14,6 +14,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import javax.inject.Inject
 
+/** Accelerometer-backed detector: runs [TapRT] on a background handler thread and vibrates on each confirmed double knock. */
 class AndroidKnockGestureDetector @Inject constructor(app: Application) : KnockGestureDetector {
     private val sensors = app.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     private val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -27,14 +28,21 @@ class AndroidKnockGestureDetector @Inject constructor(app: Application) : KnockG
     private var listener: SensorEventListener? = null
     private var lastDetectionNs = 0L
 
+    /** Forwards diagnostics to [TapRT]; null disables reporting. */
     var evaluationListener: HeuristicEvaluationListener?
         get() = tap.evaluationListener
         set(value) {
             tap.evaluationListener = value
         }
 
+    /** True while a sensor listener is registered. */
     override val isListening: Boolean get() = listener != null
 
+    /**
+     * Registers the accelerometer at the fastest rate on a dedicated handler thread, so detection
+     * never runs on the calling thread, and reports at most one knock per 500 ms. Does nothing when
+     * already listening or when the device has no accelerometer.
+     */
     override fun startListening(onKnockDetected: () -> Unit) {
         if (isListening) return
         val accelerometer = sensors.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) ?: return
@@ -70,6 +78,7 @@ class AndroidKnockGestureDetector @Inject constructor(app: Application) : KnockG
         sensors.registerListener(l, accelerometer, SensorManager.SENSOR_DELAY_FASTEST, handler)
     }
 
+    /** Unregisters the listener and quits the handler thread. */
     override fun stopListening() {
         listener?.let { sensors.unregisterListener(it) }
         listener = null

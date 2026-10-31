@@ -24,6 +24,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import group.two.knockledge.ui.theme.KnockledgeTheme
 
+/**
+ * Sign-in / registration screen with email, password, and Google sign-in.
+ */
 @Composable
 fun AuthScreen(
     state: AuthState,

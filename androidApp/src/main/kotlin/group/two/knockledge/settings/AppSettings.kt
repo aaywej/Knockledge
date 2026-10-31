@@ -7,14 +7,21 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /** Tiny persistent key-value store. Android: SharedPreferences. iOS: NSUserDefaults. */
 interface KeyValueStore {
+    /** Returns the stored value, or null when the key is absent. */
     fun getString(key: String): String?
+
+    /** Stores the value, or removes the key when [value] is null. */
     fun putString(key: String, value: String?)
 }
 
 /** In-memory store for previews and tests. */
 class MemoryStore : KeyValueStore {
     private val map = mutableMapOf<String, String>()
+
+    /** Returns the stored value, or null when the key is absent. */
     override fun getString(key: String): String? = map[key]
+
+    /** Stores the value, or removes the key when [value] is null. */
     override fun putString(key: String, value: String?) {
         if (value == null) map.remove(key) else map[key] = value
     }
@@ -35,7 +42,7 @@ object SummaryLanguages {
     const val ENGLISH = "en"
 }
 
-/** What Rewinder listens to. */
+/** What Knockledge listens to. */
 object InputSources {
     const val MIC = "mic"
 
@@ -75,27 +82,32 @@ class AppSettings(
     )
     val bufferDurationSeconds: StateFlow<Int> = _bufferDurationSeconds.asStateFlow()
 
+    /** Clamps [seconds] into [RewindPolicy]'s supported window, then persists and publishes it. */
     fun setBufferDurationSeconds(seconds: Int) {
         val clamped = RewindPolicy.clampWindowSeconds(seconds)
         store.putString(KEY_BUFFER, clamped.toString())
         _bufferDurationSeconds.value = clamped
     }
 
+    /** Stores [id] and publishes it to [summaryModel]. */
     fun setSummaryModel(id: String) {
         store.putString(KEY_SUMMARY, id)
         _summaryModel.value = id
     }
 
+    /** Stores [id] and publishes it to [language]. */
     fun setLanguage(id: String) {
         store.putString(KEY_LANGUAGE, id)
         _language.value = id
     }
 
+    /** Stores [id] and publishes it to [summaryLanguage]. */
     fun setSummaryLanguage(id: String) {
         store.putString(KEY_SUMMARY_LANGUAGE, id)
         _summaryLanguage.value = id
     }
 
+    /** Stores [id] and publishes it to [inputSource]. */
     fun setInputSource(id: String) {
         store.putString(KEY_INPUT, id)
         _inputSource.value = id
