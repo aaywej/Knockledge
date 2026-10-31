@@ -8,10 +8,10 @@ import group.two.knockledge.data.InMemoryRecentsRepository
 import group.two.knockledge.data.RecentsRepository
 import group.two.knockledge.models.ModelProvider
 import group.two.knockledge.pipeline.AudioPreprocessor
-import group.two.knockledge.pipeline.DefaultAudioPreprocessor
 import group.two.knockledge.pipeline.PlaceholderSummarizer
 import group.two.knockledge.pipeline.PlaceholderTranscriber
 import group.two.knockledge.pipeline.RewindPipeline
+import group.two.knockledge.pipeline.SileroAudioPreprocessor
 import group.two.knockledge.pipeline.Summarizer
 import group.two.knockledge.pipeline.Transcriber
 import group.two.knockledge.sensor.KnockGestureDetector
@@ -33,7 +33,7 @@ class KnockledgeGraph(
         audioSource: AudioSource,
         hooks: SessionHooks,
         transcriber: Transcriber = PlaceholderTranscriber(),
-        preprocessor: AudioPreprocessor = DefaultAudioPreprocessor(),
+        preprocessor: AudioPreprocessor = SileroAudioPreprocessor(),
         summarizer: Summarizer = PlaceholderSummarizer(),
         recents: RecentsRepository = InMemoryRecentsRepository(),
         buffer: LocalAudioRingBuffer,

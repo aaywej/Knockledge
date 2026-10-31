@@ -25,3 +25,5 @@ __pycache__/
 .specify/superpowers-handoff.json
 
 google-services.json
+
+androidApp/src/test/resources-local/

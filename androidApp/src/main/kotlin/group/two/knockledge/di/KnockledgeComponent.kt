@@ -52,10 +52,11 @@ import group.two.knockledge.models.ModelStore
 import group.two.knockledge.pipeline.AudioPreprocessor
 import group.two.knockledge.pipeline.CompositeSummarizer
 import group.two.knockledge.pipeline.CompositeTranscriber
-import group.two.knockledge.pipeline.DefaultAudioPreprocessor
+import group.two.knockledge.pipeline.OnnxSileroVadDetector
 import group.two.knockledge.pipeline.PromptProvider
 import group.two.knockledge.pipeline.ResourcePromptProvider
 import group.two.knockledge.pipeline.RewindPipeline
+import group.two.knockledge.pipeline.SileroAudioPreprocessor
 import group.two.knockledge.pipeline.Summarizer
 import group.two.knockledge.pipeline.Transcriber
 import group.two.knockledge.sensor.KnockGestureDetector
@@ -222,9 +223,10 @@ object KnockledgeModule {
         )
     }
 
-    /** Eradicates dead air and normalizes levels before AI transcription. */
+    /** Neural VAD speech isolation, dead air eradication and normalization before AI transcription. */
     @Provides
-    fun audioPreprocessor(): AudioPreprocessor = DefaultAudioPreprocessor()
+    fun audioPreprocessor(files: ModelFiles): AudioPreprocessor =
+        SileroAudioPreprocessor(OnnxSileroVadDetector({ files.pathOf(ModelCatalog.sileroOnnx) }))
 
     /** Rewind history, kept in key-value storage across restarts. */
     @Provides
