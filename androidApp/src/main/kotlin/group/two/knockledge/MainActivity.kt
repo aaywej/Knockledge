@@ -1,29 +1,65 @@
 package group.two.knockledge
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 import group.two.knockledge.sensor.AndroidKnockGestureDetector
 import group.two.knockledge.sensor.KnockGestureDetector
+import group.two.knockledge.ui.LiveTestAppShell
 import group.two.knockledge.ui.theme.KnockledgeTheme
 
-/** Hosts the Compose UI and wires the knock gesture detector for the session. */
+/**
+ * Single-activity Material 3 live test UI shell entrypoint.
+ * Hosts [LiveTestAppShell] and handles [Manifest.permission.RECORD_AUDIO] and
+ * [Manifest.permission.POST_NOTIFICATIONS] permissions.
+ */
 class MainActivity : ComponentActivity() {
     private var knockDetector: KnockGestureDetector? = null
+    private var hasRecordAudioPermission by mutableStateOf(false)
 
-    /** Starts the knock detector and sets the Compose content. */
+    private val requestPermissionsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { permissions ->
+        val audioGranted = permissions[Manifest.permission.RECORD_AUDIO]
+            ?: (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
+        hasRecordAudioPermission = audioGranted
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            arrayOf(Manifest.permission.RECORD_AUDIO)
+        }
+
+        hasRecordAudioPermission = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.RECORD_AUDIO,
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val requestMissingPermissions = {
+            val ungranted = requiredPermissions.filter {
+                ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+            }.toTypedArray()
+
+            if (ungranted.isNotEmpty()) {
+                requestPermissionsLauncher.launch(ungranted)
+            }
+        }
+
+        requestMissingPermissions()
 
         val detector = AndroidKnockGestureDetector(application)
         knockDetector = detector
@@ -33,24 +69,16 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             KnockledgeTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Knock Gesture Detector Active\nKnock twice on the phone body or surface to test.",
-                            style = MaterialTheme.typography.headlineSmall
-                        )
-                    }
-                }
+                val app = application as KnockledgeApplication
+                LiveTestAppShell(
+                    component = app.component,
+                    hasRecordAudioPermission = hasRecordAudioPermission,
+                    onRequestPermission = requestMissingPermissions,
+                )
             }
         }
     }
 
-    /** Releases the knock detector. */
     override fun onDestroy() {
         super.onDestroy()
         knockDetector?.stopListening()

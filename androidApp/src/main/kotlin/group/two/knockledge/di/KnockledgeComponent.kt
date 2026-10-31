@@ -52,6 +52,7 @@ import group.two.knockledge.models.ModelStore
 import group.two.knockledge.pipeline.AudioPreprocessor
 import group.two.knockledge.pipeline.CompositeSummarizer
 import group.two.knockledge.pipeline.CompositeTranscriber
+import group.two.knockledge.audio.AudioPlayer
 import group.two.knockledge.pipeline.OnnxSileroVadDetector
 import group.two.knockledge.pipeline.PromptProvider
 import group.two.knockledge.pipeline.ResourcePromptProvider
@@ -78,6 +79,18 @@ interface KnockledgeComponent {
 
     /** Recording, AI and settings objects the UI drives. */
     fun graph(): KnockledgeGraph
+
+    /** Hardware audio playback engine. */
+    fun audioPlayer(): AudioPlayer
+
+    /** Pre-processing, transcription and summarization pipeline. */
+    fun pipeline(): RewindPipeline
+
+    /** Runtime application settings. */
+    fun appSettings(): AppSettings
+
+    /** Notifier for posting system notifications upon AI completion. */
+    fun aiNotificationNotifier(): group.two.knockledge.notification.AiNotificationNotifier
 
     /** Fills the service's controller and gesture detector; call from onCreate. */
     fun inject(service: KnockledgeService)
@@ -225,8 +238,16 @@ object KnockledgeModule {
 
     /** Neural VAD speech isolation, dead air eradication and normalization before AI transcription. */
     @Provides
-    fun audioPreprocessor(files: ModelFiles): AudioPreprocessor =
-        SileroAudioPreprocessor(OnnxSileroVadDetector({ files.pathOf(ModelCatalog.sileroOnnx) }))
+    fun audioPreprocessor(app: Application): AudioPreprocessor =
+        SileroAudioPreprocessor(
+            OnnxSileroVadDetector({
+                try {
+                    app.assets.open("silero_vad.onnx").use { it.readBytes() }
+                } catch (_: Exception) {
+                    null
+                }
+            })
+        )
 
     /** Rewind history, kept in key-value storage across restarts. */
     @Provides
@@ -286,6 +307,12 @@ object KnockledgeModule {
             windowSeconds = settings.bufferDurationSeconds,
         )
 
+    /** System notifier for AI processing completion alerts. */
+    @Provides
+    @Singleton
+    fun aiNotificationNotifier(app: Application): group.two.knockledge.notification.AiNotificationNotifier =
+        group.two.knockledge.notification.AndroidAiNotificationNotifier(app)
+
     /** The session controller coordinating audio capture, knock gestures, and rewinds. */
     @Provides
     @Singleton
@@ -297,6 +324,7 @@ object KnockledgeModule {
         recents: RecentsRepository,
         sink: NoteSink,
         settings: AppSettings,
+        notifier: group.two.knockledge.notification.AiNotificationNotifier,
     ): KnockledgeController =
         KnockledgeController(
             capturer = capturer,
@@ -307,6 +335,7 @@ object KnockledgeModule {
             noteSink = sink,
             minAudioSaveSeconds = settings.minAudioSaveSeconds,
             autoAiProcessingEnabled = settings.autoAiProcessingEnabled,
+            notifier = notifier,
         )
 
     /** Settings and model picker, told at creation whether this device supports playback capture. */

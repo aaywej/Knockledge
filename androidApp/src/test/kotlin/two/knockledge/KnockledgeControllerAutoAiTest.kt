@@ -144,4 +144,45 @@ class KnockledgeControllerAutoAiTest {
         assertEquals(1, sink.recordedFullCount)
         assertEquals(TriggerType.MANUAL, sink.lastTrigger)
     }
+
+    @Test
+    fun rewindTriggersAiNotificationOnCompletion(): Unit = runBlocking {
+        var notifiedTitle: String? = null
+        var notifiedSummary: String? = null
+        val testNotifier = object : group.two.knockledge.notification.AiNotificationNotifier {
+            override fun notifyAiComplete(title: String, summaryText: String) {
+                notifiedTitle = title
+                notifiedSummary = summaryText
+            }
+        }
+
+        val settings = AppSettings(MemoryStore(), "qwen2b")
+        settings.setAutoAiProcessingEnabled(true)
+
+        val ringBuffer = FileLocalAudioRingBuffer(tempDir, 60, 16_000)
+        ringBuffer.write(ShortArray(160_000) { 2_000 })
+
+        val controller = KnockledgeController(
+            capturer = RingAudioCapturer(NoOpAudioSource(), ringBuffer),
+            knockDetector = FakeDetector(),
+            hooks = NoOpHooks(),
+            pipeline = RewindPipeline(
+                transcriber = PlaceholderTranscriber(),
+                summarizer = PlaceholderSummarizer(),
+                preprocessor = DefaultAudioPreprocessor(),
+            ),
+            recents = InMemoryRecentsRepository(),
+            noteSink = RecordingNoteSink(),
+            autoAiProcessingEnabled = settings.autoAiProcessingEnabled,
+            notifier = testNotifier,
+        )
+
+        controller.start()
+        withTimeout(5_000) { while (!controller.state.value.canRewind) delay(10) }
+        controller.rewind(TriggerType.MANUAL)
+        withTimeout(5_000) { while (controller.state.value.pendingRewinds > 0) delay(10) }
+
+        assertEquals("Untitled rewind", notifiedTitle)
+        kotlin.test.assertNotNull(notifiedSummary)
+    }
 }

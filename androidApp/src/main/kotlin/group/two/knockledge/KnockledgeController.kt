@@ -8,6 +8,8 @@ import group.two.knockledge.core.RewindPolicy
 import group.two.knockledge.data.RecentsRepository
 import group.two.knockledge.data.TriggerType
 import group.two.knockledge.data.repository.NoteSink
+import group.two.knockledge.notification.AiNotificationNotifier
+import group.two.knockledge.notification.NoopAiNotificationNotifier
 import group.two.knockledge.pipeline.PipelineResult
 import group.two.knockledge.pipeline.RewindPipeline
 import group.two.knockledge.pipeline.RewindStage
@@ -94,6 +96,7 @@ class KnockledgeController(
     private val noteSink: NoteSink? = null,
     private val minAudioSaveSeconds: StateFlow<Int> = MutableStateFlow(RewindPolicy.MIN_REWIND_SECONDS),
     private val autoAiProcessingEnabled: StateFlow<Boolean> = MutableStateFlow(true),
+    private val notifier: AiNotificationNotifier = NoopAiNotificationNotifier,
     private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -195,6 +198,7 @@ class KnockledgeController(
                                     result.transcript, result.summary,
                                 )
                             }
+                            notifier.notifyAiComplete(result.summary.title, result.summary.gist)
                         }
                     }
                 }
