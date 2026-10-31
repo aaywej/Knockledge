@@ -102,6 +102,11 @@ class KnockledgeController(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val pipelineLock = Mutex()
     private val pendingRewinds = MutableStateFlow(0)
+    private val _savedClipCount = MutableStateFlow(0)
+
+    /** Clips saved during the current session; resets when a new session starts. */
+    val savedClipCount: StateFlow<Int> = _savedClipCount
+
     private val stage = MutableStateFlow<RewindStage?>(null)
     private val coordinatorError = MutableStateFlow<String?>(null)
     private val isGestureListening = MutableStateFlow(false)
@@ -145,6 +150,7 @@ class KnockledgeController(
         capturer.start()
         knockDetector.startListening { rewind(TriggerType.GESTURE) }
         isGestureListening.value = true
+        _savedClipCount.value = 0
         hooks.onSessionStarted()
     }
 
@@ -172,6 +178,7 @@ class KnockledgeController(
             var wav: File? = null
             try {
                 wav = capturer.snapshot()
+                _savedClipCount.update { it + 1 }
                 val pcm = readPcm(wav)
                 val endedAt = nowMillis()
                 val durationMillis = pcm.size * 1000L / RewindPolicy.SAMPLE_RATE

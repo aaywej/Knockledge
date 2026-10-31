@@ -68,4 +68,24 @@
     <string name="notification_channel_ai_desc">Notifications when audio transcription and summarization complete.</string>
     <string name="notification_ai_complete_title">AI Processing Complete</string>
     <string name="notification_ai_complete_fallback">Transcription and summary are ready.</string>
+
+    <!-- Session Recording Notification -->
+    <string name="notification_title_recording">Cache Recording</string>
+    <string name="notification_title_summarizing">Summarizing…</string>
+    <string name="notification_save_count_format">%d saved</string>
+    <string name="notification_action_rewind">Rewind</string>
+    <string name="notification_action_stop">Stop</string>
+    <string name="notification_status_ready">%1$s in memory. Rewind is ready.</string>
+    <string name="notification_status_locked">Rewind unlocks in %1$s</string>
+    <string name="notification_cache_filling">Cache filling</string>
+    <string name="notification_cache_replacing">Cache full, replacing oldest audio</string>
+    <string name="notification_title_saved">Saved</string>
+    <string name="notification_status_saved">Clip %d saved</string>
+    <string name="notification_action_view">View saved notes</string>
+    <string name="notification_title_stop_confirm">Stop recording?</string>
+    <string name="notification_status_stop_discard">Unsaved audio will be discarded.</string>
+    <string name="notification_action_confirm_stop">Stop recording</string>
+    <string name="notification_action_cancel_stop">Keep recording</string>
+    <string name="notification_confirm_stop_compact_keep">Keep</string>
+    <string name="notification_confirm_stop_compact_stop">Stop</string>
 </resources>

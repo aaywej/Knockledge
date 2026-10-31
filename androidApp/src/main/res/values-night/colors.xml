@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="notification_foreground">#FFFFFFFF</color>
+    <color name="notification_foreground_muted">#B3FFFFFF</color>
+    <color name="notification_cache_filling">#FFB300</color>
+    <color name="notification_cache_replacing">#66BB6A</color>
+</resources>
