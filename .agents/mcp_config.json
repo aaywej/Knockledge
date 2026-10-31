@@ -15,6 +15,9 @@
         "Authorization": "Bearer ctx7sk-cbadfc05-6059-42b1-8b49-170ef6d935b7"
       },
       "url": "https://mcp.context7.com/mcp"
+    },
+    "Figma": {
+      "url": "https://mcp.figma.com/mcp"
     }
   }
 }

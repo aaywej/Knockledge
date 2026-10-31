@@ -1,17 +1,12 @@
 <!--
 SYNC IMPACT REPORT
-- Version change: Initial adoption -> 1.0.0
+- Version change: 1.1.0 -> 1.2.0
 - List of modified principles:
-  - [PRINCIPLE_1_NAME] -> I. Minimum Viable Hackathon Build (3-Day Scope)
-  - [PRINCIPLE_2_NAME] -> II. ADHD-Driven Execution
-  - [PRINCIPLE_3_NAME] -> III. Karpathy Discipline
-  - [PRINCIPLE_4_NAME] -> IV. Ponytail Simplicity
-  - [PRINCIPLE_5_NAME] -> Consolidated into testing quality gates
+  - None
 - Added sections:
-  - Technology Stack & Architecture Constraints
-  - Development Workflow & Quality Gates
+  - Kotlin documentation directives under Code Quality and Architecture Directives
 - Removed sections:
-  - Unused template placeholders
+  - None
 - Follow-up TODOs:
   - None
 -->
@@ -53,6 +48,21 @@ The codebase MUST maintain the shortest functional solution.
 - Avoid building single-use abstractions or speculative configuration layers.
 - Rationale: Minimal dependencies and clean platform code prevent dependency conflicts and maintenance debt.
 
+### V. Android Best Practices
+Developers and agents MUST follow official Android development best practices.
+- Apply official Android architecture guidelines and modern Jetpack libraries.
+- Respect Android component lifecycles, coroutine dispatchers, and state management patterns.
+- Implement responsive, power-efficient, and accessible Android platform interfaces.
+- Rationale: Official Android practices prevent memory leaks, crashes, and maintenance debt.
+
+### VI. Workaround and Hard-Coding Prohibition
+Developers and agents MUST NOT hard-code values or introduce temporary workarounds.
+- Store strings, dimensions, colors, and configurations in standard Android resource files.
+- Prohibit undocumented bypasses, temporary patches, and shortcut workarounds across all layers.
+- If an agent or developer insists on a workaround, they MUST ask the user first.
+- Obtain explicit user approval before you insert any workaround or hard-coded value into code.
+- Rationale: Hard-coded values and workarounds create hidden defects, degrade code quality, and increase technical debt.
+
 ## Technology Stack & Architecture Constraints
 
 The project MUST adhere to the following architecture and component boundaries:
@@ -68,6 +78,14 @@ The project MUST adhere to the following architecture and component boundaries:
 ## Development Workflow & Quality Gates
 
 Development activities MUST pass these quality gates before integration:
+
+### Code Quality and Architecture Directives
+- Adhere strictly to recommended Android architecture and Jetpack best practices.
+- Define UI strings, dimensions, and theme attributes in Android XML resources or Compose theme tokens.
+- Never use magic literals, hard-coded URLs, or inline credentials.
+- Prompt the user and secure written consent before writing any necessary workaround.
+- Write KDoc comments for all classes and public methods.
+- Add explanatory comments to complex private helper methods.
 
 ### Compose Preview Directives
 - Write stateless `@Preview` functions for every screen and reusable UI component.
@@ -94,4 +112,4 @@ This constitution supersedes all other documentation, practices, and informal co
   - PATCH: Wording refinements, typo corrections, and non-semantic adjustments.
 - **Compliance Review**: All specifications, implementation plans, and code reviews MUST verify compliance with these rules.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-29 | **Last Amended**: 2026-10-29
+**Version**: 1.2.0 | **Ratified**: 2026-10-29 | **Last Amended**: 2026-10-31
