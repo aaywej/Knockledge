@@ -3,6 +3,10 @@ package group.two.knockledge
 import android.app.Application
 import android.net.ConnectivityManager
 import android.net.Network
+import com.google.firebase.FirebaseApp
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
+import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import group.two.knockledge.di.DaggerRewinderComponent
 import group.two.knockledge.di.RewinderComponent
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +27,19 @@ class KnockledgeApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
+            if (BuildConfig.DEBUG) {
+                // Reinstalls wipe SharedPreferences, regenerating the debug secret; pin one instead.
+                if (BuildConfig.APP_CHECK_DEBUG_SECRET.isNotEmpty()) {
+                    getSharedPreferences(
+                        "com.google.firebase.appcheck.debug.store.${FirebaseApp.getInstance().persistenceKey}",
+                        MODE_PRIVATE,
+                    ).edit().putString("com.google.firebase.appcheck.debug.DEBUG_SECRET",
+                        BuildConfig.APP_CHECK_DEBUG_SECRET).apply()
+                }
+                DebugAppCheckProviderFactory.getInstance()
+            } else PlayIntegrityAppCheckProviderFactory.getInstance(),
+        )
         component = DaggerRewinderComponent.factory().create(this)
         graph = component.graph()
         getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(

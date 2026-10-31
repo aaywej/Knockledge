@@ -13,6 +13,8 @@ import group.two.knockledge.pipeline.TranscriptionEngine
 import group.two.knockledge.pipeline.TranscriptionEngineType
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 interface GeminiClient {
     suspend fun generate(wav: ByteArray, prompt: String): String
@@ -50,33 +52,43 @@ class FirebaseGeminiClient : GeminiClient {
             ?: error("empty Gemini response")
 
     companion object {
-        const val MODEL_ID = "gemini-3.5-flash"
+        const val MODEL_ID = "gemini-3.5-flash-lite"
     }
 }
+
+@Serializable
+private data class GeminiResponse(
+    val detectedLanguage: String,
+    val sentences: List<GeminiSentence>,
+)
+
+@Serializable
+private data class GeminiSentence(
+    val speaker: String,
+    val startTimeMs: Long,
+    val endTimeMs: Long,
+    val text: String,
+    val confidence: Float = 1.0f,
+)
 
 class FirebaseAiTranscriber(private val client: GeminiClient) : TranscriptionEngine {
     override val engineType = TranscriptionEngineType.CLOUD_FIREBASE_AI
 
+    private val json = Json { ignoreUnknownKeys = true }
+
     override suspend fun process(segment: AudioSegment): TranscriptResult =
         parse(client.generate(wav(segment.pcm, segment.sampleRate), PROMPT))
 
-    private fun parse(json: String): TranscriptResult {
-        val root = MiniJson(json).value() as Map<*, *>
-        val sentences = (root["sentences"] as List<*>).map {
-            it as Map<*, *>
-            TranscriptSentence(
-                speaker = it["speaker"] as String,
-                startTimeMs = (it["startTimeMs"] as Number).toLong(),
-                endTimeMs = (it["endTimeMs"] as Number).toLong(),
-                text = it["text"] as String,
-                confidence = (it["confidence"] as Number?)?.toFloat() ?: 1.0f,
-            )
+    private fun parse(raw: String): TranscriptResult {
+        val root = json.decodeFromString<GeminiResponse>(raw)
+        val sentences = root.sentences.map {
+            TranscriptSentence(it.speaker, it.startTimeMs, it.endTimeMs, it.text, it.confidence)
         }
         return TranscriptResult(
             sentences = sentences,
             fullText = sentences.joinToString(" ") { it.text },
             isDiarized = sentences.map { it.speaker }.distinct().size > 1,
-            detectedLanguage = root["detectedLanguage"] as String,
+            detectedLanguage = root.detectedLanguage,
             engineType = engineType,
         )
     }
@@ -97,77 +109,3 @@ class FirebaseAiTranscriber(private val client: GeminiClient) : TranscriptionEng
     }
 }
 
-private class MiniJson(private val s: String) {
-    private var i = 0
-
-    fun value(): Any? {
-        ws()
-        return when (val c = s[i]) {
-            '{' -> {
-                i++
-                val m = LinkedHashMap<String, Any?>()
-                ws()
-                if (s[i] == '}') i++ else do {
-                    ws()
-                    val k = string()
-                    ws(); expect(':')
-                    m[k] = value()
-                    ws()
-                } while (s[i++] == ',')
-                m
-            }
-            '[' -> {
-                i++
-                val l = ArrayList<Any?>()
-                ws()
-                if (s[i] == ']') i++ else do {
-                    l += value()
-                    ws()
-                } while (s[i++] == ',')
-                l
-            }
-            '"' -> string()
-            't' -> lit("true", true)
-            'f' -> lit("false", false)
-            'n' -> lit("null", null)
-            else -> {
-                require(c == '-' || c.isDigit()) { "bad json at $i" }
-                val st = i
-                while (i < s.length && (s[i].isDigit() || s[i] in "+-.eE")) i++
-                s.substring(st, i).toDouble()
-            }
-        }
-    }
-
-    private fun string(): String {
-        expect('"')
-        val sb = StringBuilder()
-        while (s[i] != '"') {
-            var c = s[i++]
-            if (c == '\\') {
-                c = s[i++]
-                when (c) {
-                    'n' -> sb.append('\n')
-                    't' -> sb.append('\t')
-                    'r' -> sb.append('\r')
-                    'b' -> sb.append('\b')
-                    'f' -> sb.append('\u000C')
-                    'u' -> { sb.append(s.substring(i, i + 4).toInt(16).toChar()); i += 4 }
-                    else -> sb.append(c)
-                }
-            } else sb.append(c)
-        }
-        i++
-        return sb.toString()
-    }
-
-    private fun lit(word: String, v: Any?): Any? {
-        require(s.startsWith(word, i)) { "bad json at $i" }
-        i += word.length
-        return v
-    }
-
-    private fun expect(c: Char) = require(s[i++] == c) { "bad json at ${i - 1}" }
-
-    private fun ws() { while (i < s.length && s[i].isWhitespace()) i++ }
-}
