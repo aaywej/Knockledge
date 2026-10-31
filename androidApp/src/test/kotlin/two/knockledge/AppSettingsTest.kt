@@ -17,12 +17,17 @@ class AppSettingsTest {
         assertEquals("whisper", settings.transcriptionLocalModel.value)
         assertEquals("auto", settings.comprehensionMode.value)
         assertEquals("qwen2b", settings.summaryModel.value)
+        assertEquals(false, settings.autoAiProcessingEnabled.value)
     }
 
     @Test
     fun settersUpdateAndPersistValues() {
         val store = MemoryStore()
         val settings = AppSettings(store, defaultSummaryModel = "qwen2b")
+
+        settings.setAutoAiProcessingEnabled(true)
+        assertEquals(true, settings.autoAiProcessingEnabled.value)
+        assertEquals("true", store.getString("auto_ai_processing_enabled"))
 
         settings.setMinAudioSaveSeconds(15)
         assertEquals(15, settings.minAudioSaveSeconds.value)

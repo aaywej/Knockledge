@@ -48,11 +48,13 @@ import group.two.knockledge.models.ModelFiles
 import group.two.knockledge.models.ModelProvider
 import group.two.knockledge.models.ModelStorage
 import group.two.knockledge.models.ModelStore
+import group.two.knockledge.pipeline.AudioPreprocessor
 import group.two.knockledge.pipeline.CompositeSummarizer
 import group.two.knockledge.pipeline.CompositeTranscriber
-import group.two.knockledge.pipeline.RegexSensitiveFilter
+import group.two.knockledge.pipeline.DefaultAudioPreprocessor
+import group.two.knockledge.pipeline.PromptProvider
+import group.two.knockledge.pipeline.ResourcePromptProvider
 import group.two.knockledge.pipeline.RewindPipeline
-import group.two.knockledge.pipeline.SensitiveFilter
 import group.two.knockledge.pipeline.Summarizer
 import group.two.knockledge.pipeline.Transcriber
 import group.two.knockledge.settings.AppSettings
@@ -149,6 +151,11 @@ object KnockledgeModule {
     @Provides
     fun textEngine(): TextEngine = AndroidTextEngine
 
+    /** Resolves system and user prompts from Android XML resources. */
+    @Provides
+    @Singleton
+    fun promptProvider(app: Application): PromptProvider = ResourcePromptProvider(app)
+
     /** Null on Android: only iOS 26 ships a built-in model. */
     @Provides
     @Nullable
@@ -162,15 +169,22 @@ object KnockledgeModule {
         files: ModelFiles,
         @Named("inferenceThreads") threads: Int,
         settings: AppSettings,
-    ): OnDeviceTranscriber = OnDeviceTranscriber(engine, files, threads) { settings.language.value }
+        promptProvider: PromptProvider,
+    ): OnDeviceTranscriber = OnDeviceTranscriber(
+        engine,
+        files,
+        threads,
+        language = { settings.language.value },
+        taglishPrompt = promptProvider.taglishPrompt,
+    )
 
     /** Firebase AI while the network is up, on-device Whisper otherwise. */
     @Provides
     @Singleton
-    fun transcriber(onDevice: OnDeviceTranscriber, app: Application, settings: AppSettings): Transcriber {
+    fun transcriber(onDevice: OnDeviceTranscriber, app: Application, settings: AppSettings, promptProvider: PromptProvider): Transcriber {
         val cm = app.getSystemService(ConnectivityManager::class.java)
         return CompositeTranscriber(
-            online = FirebaseAiTranscriber(FirebaseGeminiClient()),
+            online = FirebaseAiTranscriber(FirebaseGeminiClient(), promptProvider.geminiTranscribePrompt),
             offline = WhisperTranscriberAdapter { onDevice.transcribe(it) },
             isOnline = { cm.getNetworkCapabilities(cm.activeNetwork)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true },
             mode = { settings.transcriptionMode.value },
@@ -187,10 +201,11 @@ object KnockledgeModule {
         system: SystemModelEngine?,
         settings: AppSettings,
         app: Application,
+        promptProvider: PromptProvider,
     ): Summarizer {
         val cm = app.getSystemService(ConnectivityManager::class.java)
         return CompositeSummarizer(
-            online = FirebaseAiSummarizer { settings.summaryLanguage.value },
+            online = FirebaseAiSummarizer({ settings.summaryLanguage.value }, promptProvider),
             offline = OnDeviceSummarizer(
                 engine = engine,
                 files = files,
@@ -198,15 +213,16 @@ object KnockledgeModule {
                 system = system,
                 selected = { settings.summaryModel.value },
                 outputLanguage = { settings.summaryLanguage.value },
+                promptProvider = promptProvider,
             ),
             isOnline = { cm.getNetworkCapabilities(cm.activeNetwork)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true },
             mode = { settings.comprehensionMode.value },
         )
     }
 
-    /** Regex rules that blank out passwords, numbers and other personal details in transcripts. */
+    /** Eradicates dead air and normalizes levels before AI transcription. */
     @Provides
-    fun sensitiveFilter(): SensitiveFilter = RegexSensitiveFilter()
+    fun audioPreprocessor(): AudioPreprocessor = DefaultAudioPreprocessor()
 
     /** Rewind history, kept in key-value storage across restarts. */
     @Provides
@@ -241,11 +257,11 @@ object KnockledgeModule {
     @Singleton
     fun sessionHooks(app: Application): SessionHooks = ForegroundServiceHooks(app)
 
-    /** Transcribe, then filter, then summarize. */
+    /** Pre-process, transcribe, then summarize. */
     @Provides
     @Singleton
-    fun pipeline(transcriber: Transcriber, filter: SensitiveFilter, summarizer: Summarizer): RewindPipeline =
-        RewindPipeline(transcriber, filter, summarizer)
+    fun pipeline(transcriber: Transcriber, summarizer: Summarizer, preprocessor: AudioPreprocessor): RewindPipeline =
+        RewindPipeline(transcriber, summarizer, preprocessor)
 
     /** Saves a finished rewind as a note for the signed-in user, and skips it when signed out. */
     @Provides
@@ -273,6 +289,7 @@ object KnockledgeModule {
             sink,
             settings.bufferDurationSeconds,
             settings.minAudioSaveSeconds,
+            settings.autoAiProcessingEnabled,
         )
 
     /** Settings and model picker, told at creation whether this device supports playback capture. */

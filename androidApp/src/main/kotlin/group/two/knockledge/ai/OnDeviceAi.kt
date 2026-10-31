@@ -4,6 +4,7 @@ import group.two.knockledge.models.ModelCatalog
 import group.two.knockledge.models.ModelFiles
 import group.two.knockledge.models.SummaryModelIds
 import group.two.knockledge.pipeline.PlaceholderSummarizer
+import group.two.knockledge.pipeline.PromptProvider
 import group.two.knockledge.pipeline.QwenChatFormat
 import group.two.knockledge.pipeline.Summaries
 import group.two.knockledge.pipeline.Summarizer
@@ -84,6 +85,7 @@ class OnDeviceTranscriber(
     private val files: ModelFiles,
     private val threads: Int,
     private val language: () -> String = { TranscriptionLanguages.FILIPINO },
+    private val taglishPrompt: String = TranscriptionHints.TAGLISH_PROMPT,
 ) {
     /** Returns the cleaned transcript, or an empty string when the Whisper file is not installed. */
     suspend fun transcribe(pcm: ShortArray): String =
@@ -95,7 +97,7 @@ class OnDeviceTranscriber(
                 modelPath = model,
                 pcm = pcm,
                 language = lang,
-                prompt = if (lang == TranscriptionLanguages.FILIPINO) TranscriptionHints.TAGLISH_PROMPT else "",
+                prompt = if (lang == TranscriptionLanguages.FILIPINO) taglishPrompt else "",
                 vadModelPath = files.pathOf(ModelCatalog.vad),
                 threads = threads,
             )
@@ -117,6 +119,7 @@ class OnDeviceSummarizer(
     private val selected: () -> String = { files.summarizerModel?.id ?: SummaryModelIds.QWEN_2B },
     private val fallback: Summarizer = PlaceholderSummarizer(),
     private val outputLanguage: () -> String = { SummaryLanguages.AUTO },
+    private val promptProvider: PromptProvider = SummarizerPrompt,
 ) : Summarizer {
     /**
      * Falls back to [fallback] when Whisper or a summarizer file is missing, and to an installed
@@ -137,8 +140,8 @@ class OnDeviceSummarizer(
             val problem = if (reason == null) {
                 try {
                     val raw = system.complete(
-                        instructions = SummarizerPrompt.system(language),
-                        prompt = SummarizerPrompt.user(request, SummarizerPrompt.APPLE_MAX_TRANSCRIPT_CHARS, language),
+                        instructions = promptProvider.summarizerSystem(language),
+                        prompt = promptProvider.summarizerUser(request, SummarizerPrompt.APPLE_MAX_TRANSCRIPT_CHARS, language),
                         temperature = 0.5f,
                     )
                     return@withContext SummaryParser.parse(raw, request.redactedCount)
@@ -159,7 +162,7 @@ class OnDeviceSummarizer(
     }
 
     private fun runQwen(modelPath: String, request: SummaryRequest, language: String): Summary {
-        val prompt = QwenChatFormat.build(SummarizerPrompt.system(language), SummarizerPrompt.user(request, outputLanguage = language))
+        val prompt = QwenChatFormat.build(promptProvider.summarizerSystem(language), promptProvider.summarizerUser(request, outputLanguage = language))
         val raw = engine.complete(
             modelPath = modelPath,
             prompt = prompt,

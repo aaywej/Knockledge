@@ -6,4 +6,15 @@
     <string name="chapter_list_title">Chapters</string>
     <string name="no_chapters">No chapters available</string>
     <string name="playback_error">Playback error</string>
+
+    <!-- AI Processing & Settings -->
+    <string name="auto_ai_processing_title">Automatic AI Processing</string>
+    <string name="auto_ai_processing_desc">Automatically transcribe and summarize saved audio buffer recordings.</string>
+    <string name="process_ai_notes">Process AI Notes</string>
+    <string name="processing_transcribing">Transcribing audio…</string>
+    <string name="processing_summarizing">Summarizing transcript…</string>
+    <string name="processing_completed">AI processing completed</string>
+    <string name="processing_idle">No AI summary generated</string>
+    <string name="processing_failed">AI processing failed. Please try again.</string>
+    <string name="retry">Retry</string>
 </resources>

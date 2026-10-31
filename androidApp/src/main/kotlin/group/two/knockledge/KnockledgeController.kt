@@ -9,9 +9,9 @@ import group.two.knockledge.core.RewindPolicy
 import group.two.knockledge.data.RecentsRepository
 import group.two.knockledge.data.TriggerType
 import group.two.knockledge.data.repository.NoteSink
+import group.two.knockledge.pipeline.PipelineResult
 import group.two.knockledge.pipeline.RewindPipeline
 import group.two.knockledge.pipeline.RewindStage
-import group.two.knockledge.pipeline.TranscriptResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -96,6 +96,7 @@ class KnockledgeController(
     private val noteSink: NoteSink? = null,
     windowSeconds: StateFlow<Int> = MutableStateFlow(RewindPolicy.WINDOW_SECONDS),
     private val minAudioSaveSeconds: StateFlow<Int> = MutableStateFlow(RewindPolicy.MIN_REWIND_SECONDS),
+    private val autoAiProcessingEnabled: StateFlow<Boolean> = MutableStateFlow(true),
     private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -207,19 +208,30 @@ class KnockledgeController(
                 val pcm = readPcm(wav)
                 val endedAt = nowMillis()
                 val durationMillis = pcm.size * 1000L / RewindPolicy.SAMPLE_RATE
-                var transcript: TranscriptResult? = null
+
+                if (!autoAiProcessingEnabled.value) {
+                    runCatching { noteSink?.recordAudioOnly(wav, endedAt - durationMillis, endedAt, trigger) }
+                    return@launch
+                }
                 pipelineLock.withLock {
-                    val summary = pipeline.run(
+                    val result = pipeline.run(
                         pcm,
                         RewindPolicy.SAMPLE_RATE,
                         durationMillis,
                         onStage = { stage -> _state.update { it.copy(stage = stage) } },
-                        onTranscript = { transcript = it },
                     )
-                    val recent = recents.add(summary, endedAt - durationMillis, endedAt)
-                    _created.tryEmit(recent.id)
-                    transcript?.let { t ->
-                        runCatching { noteSink?.record(wav, endedAt - durationMillis, endedAt, trigger, t, summary) }
+                    when (result) {
+                        is PipelineResult.InsufficientSpeech -> reportError(result.message)
+                        is PipelineResult.Success -> {
+                            val recent = recents.add(result.summary, endedAt - durationMillis, endedAt)
+                            _created.tryEmit(recent.id)
+                            runCatching {
+                                noteSink?.record(
+                                    wav, endedAt - durationMillis, endedAt, trigger,
+                                    result.transcript, result.summary,
+                                )
+                            }
+                        }
                     }
                 }
             } catch (e: CancellationException) {

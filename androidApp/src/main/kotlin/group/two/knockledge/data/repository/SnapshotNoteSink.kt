@@ -2,8 +2,8 @@ package group.two.knockledge.data.repository
 
 import group.two.knockledge.data.AudioSnapshotInput
 import group.two.knockledge.data.AuthRepository
-import group.two.knockledge.data.NoteRepository
 import group.two.knockledge.data.ChapterMarkerInput
+import group.two.knockledge.data.NoteRepository
 import group.two.knockledge.data.SentenceInput
 import group.two.knockledge.data.SummaryInput
 import group.two.knockledge.data.TranscriptInput
@@ -27,6 +27,16 @@ fun interface NoteSink {
         transcript: TranscriptResult,
         summary: Summary,
     )
+
+    /** Saves raw audio recording note without running or attaching transcript and summary. */
+    suspend fun recordAudioOnly(
+        file: File,
+        startEpochMs: Long,
+        endEpochMs: Long,
+        trigger: TriggerType,
+    ) {
+        // Default no-op for generic sinks
+    }
 }
 
 /**
@@ -93,6 +103,28 @@ class SnapshotNoteSink(
                     AiEngineType.LOCAL_ON_DEVICE
                 },
             ),
+        )
+    }
+
+    /**
+     * Saves raw audio recording note without running or attaching transcript and summary.
+     */
+    override suspend fun recordAudioOnly(
+        file: File,
+        startEpochMs: Long,
+        endEpochMs: Long,
+        trigger: TriggerType,
+    ) {
+        val user = auth.currentUser.value ?: return
+        notes.createFromSnapshot(
+            AudioSnapshotInput(
+                file = file,
+                startEpochMs = startEpochMs,
+                endEpochMs = endEpochMs,
+                durationMs = endEpochMs - startEpochMs,
+                triggerType = ModelTriggerType.valueOf(trigger.name),
+            ),
+            user.uid,
         )
     }
 }

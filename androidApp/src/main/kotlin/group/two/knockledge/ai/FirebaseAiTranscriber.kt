@@ -96,14 +96,17 @@ private data class GeminiChapter(
 )
 
 /** Cloud transcription: uploads each segment to Gemini and maps its JSON reply to [TranscriptResult]. */
-class FirebaseAiTranscriber(private val client: GeminiClient) : TranscriptionEngine {
+class FirebaseAiTranscriber(
+    private val client: GeminiClient,
+    private val prompt: String = PROMPT,
+) : TranscriptionEngine {
     override val engineType = TranscriptionEngineType.CLOUD_FIREBASE_AI
 
     private val json = Json { ignoreUnknownKeys = true }
 
     /** Sends [segment] as a WAV plus the transcription prompt; throws if the reply cannot be parsed. */
     override suspend fun process(segment: AudioSegment): TranscriptResult =
-        parse(client.generate(wav(segment.pcm, segment.sampleRate), PROMPT))
+        parse(client.generate(wav(segment.pcm, segment.sampleRate), prompt))
 
     private fun parse(raw: String): TranscriptResult {
         val root = json.decodeFromString<GeminiResponse>(raw)
@@ -134,7 +137,7 @@ class FirebaseAiTranscriber(private val client: GeminiClient) : TranscriptionEng
         return b.array()
     }
 
-    private companion object {
+    companion object {
         const val PROMPT = "Transcribe this audio verbatim. The language may be English, Filipino or Taglish. " +
             "Separate speaker turns as Speaker 1, Speaker 2, and so on, with millisecond start and end times. " +
             "Also divide the speech into timestamped chapters with titles and key bullet points."

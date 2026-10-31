@@ -129,4 +129,28 @@ class SnapshotNoteSinkTest {
         assertTrue(notes.transcripts.isEmpty())
         assertTrue(notes.summaries.isEmpty())
     }
+
+    @Test
+    fun recordAudioOnlySavesAudioWithoutTranscriptOrSummary() = runBlocking {
+        val notes = FakeNotes()
+        val sink = SnapshotNoteSink(notes, FakeAuth(user))
+        sink.recordAudioOnly(wav(), 1_000L, 61_000L, TriggerType.GESTURE)
+
+        assertEquals(1, notes.created.size)
+        assertEquals(60_000L, notes.created[0].durationMs)
+        assertEquals(group.two.knockledge.data.model.TriggerType.GESTURE, notes.created[0].triggerType)
+        assertTrue(notes.transcripts.isEmpty())
+        assertTrue(notes.summaries.isEmpty())
+    }
+
+    @Test
+    fun recordAudioOnlyReturnsNullWhenSignedOut() = runBlocking {
+        val notes = FakeNotes()
+        val sink = SnapshotNoteSink(notes, FakeAuth(null))
+        sink.recordAudioOnly(wav(), 1_000L, 61_000L, TriggerType.MANUAL)
+
+        assertTrue(notes.created.isEmpty())
+        assertTrue(notes.transcripts.isEmpty())
+        assertTrue(notes.summaries.isEmpty())
+    }
 }

@@ -6,7 +6,7 @@ import group.two.knockledge.core.LocalAudioRingBuffer
 import group.two.knockledge.data.InMemoryRecentsRepository
 import group.two.knockledge.data.TriggerType
 import group.two.knockledge.data.repository.NoteSink
-import group.two.knockledge.pipeline.RegexSensitiveFilter
+import group.two.knockledge.pipeline.DefaultAudioPreprocessor
 import group.two.knockledge.pipeline.RewindPipeline
 import group.two.knockledge.pipeline.Summarizer
 import group.two.knockledge.pipeline.Summary
@@ -56,6 +56,8 @@ class KnockledgeNoteSinkTest {
     private fun wav(): File {
         val f = File.createTempFile("snap", ".wav")
         val pcm = ByteArray(32_000)
+        java.nio.ByteBuffer.wrap(pcm).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+            .asShortBuffer().put(ShortArray(16_000) { 2_000 })
         f.writeBytes(ByteArray(44) + pcm)
         return f
     }
@@ -76,10 +78,10 @@ class KnockledgeNoteSinkTest {
             object : Transcriber {
                 override suspend fun transcribe(pcm: ShortArray, sampleRate: Int): TranscriptResult = transcript
             },
-            RegexSensitiveFilter(),
             object : Summarizer {
                 override suspend fun summarize(request: SummaryRequest): Summary = Summary("t", "g", emptyList(), 0)
             },
+            DefaultAudioPreprocessor(),
         )
         val controller = KnockledgeController(
             FakeSource(),

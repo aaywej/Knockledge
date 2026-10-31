@@ -36,6 +36,11 @@ class AiControls(
     /** False where the platform cannot capture its own playback. */
     val supportsDeviceAudio: Boolean = false,
 ) {
+    /** Whether automatic AI processing runs immediately when saving an audio buffer. */
+    val autoAiProcessingEnabled = settings.autoAiProcessingEnabled
+
+    /** Sets the automatic AI processing preference. */
+    fun setAutoAiProcessingEnabled(enabled: Boolean) = settings.setAutoAiProcessingEnabled(enabled)
     /** Every summary model the picker can offer: Qwen first, then the built-in model when present. */
     /**
  * Returns a list of summary model options for the picker.

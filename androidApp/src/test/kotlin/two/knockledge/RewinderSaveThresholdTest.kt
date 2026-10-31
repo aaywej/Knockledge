@@ -5,9 +5,9 @@ import group.two.knockledge.audio.AudioSource
 import group.two.knockledge.audio.NoopSessionHooks
 import group.two.knockledge.core.LocalAudioRingBuffer
 import group.two.knockledge.data.InMemoryRecentsRepository
+import group.two.knockledge.pipeline.DefaultAudioPreprocessor
 import group.two.knockledge.pipeline.PlaceholderSummarizer
 import group.two.knockledge.pipeline.PlaceholderTranscriber
-import group.two.knockledge.pipeline.RegexSensitiveFilter
 import group.two.knockledge.pipeline.RewindPipeline
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,7 +38,7 @@ class RewinderSaveThresholdTest {
     fun canRewindObeysDynamicThreshold() = runBlocking {
         val dummyBuffer = DummyBuffer(4_000L) // 4 seconds buffered
         val minSaveSeconds = MutableStateFlow(5) // Requires 5 seconds
-        val pipeline = RewindPipeline(PlaceholderTranscriber(), RegexSensitiveFilter(), PlaceholderSummarizer())
+        val pipeline = RewindPipeline(PlaceholderTranscriber(), PlaceholderSummarizer(), DefaultAudioPreprocessor())
 
         val controller = KnockledgeController(
             audioSource = DummySource(chunks = 1),

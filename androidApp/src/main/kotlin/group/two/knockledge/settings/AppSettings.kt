@@ -104,6 +104,11 @@ class AppSettings(
     private val _comprehensionMode = MutableStateFlow(store.getString(KEY_COMPREHENSION_MODE) ?: MODE_AUTO)
     val comprehensionMode: StateFlow<String> = _comprehensionMode.asStateFlow()
 
+    private val _autoAiProcessingEnabled = MutableStateFlow(
+        store.getString(KEY_AUTO_AI_PROCESSING)?.toBooleanStrictOrNull() ?: false,
+    )
+    val autoAiProcessingEnabled: StateFlow<Boolean> = _autoAiProcessingEnabled.asStateFlow()
+
     /** Clamps [seconds] into [RewindPolicy]'s supported window, then persists and publishes it. */
     fun setBufferDurationSeconds(seconds: Int) {
         val clamped = RewindPolicy.clampWindowSeconds(seconds)
@@ -166,6 +171,12 @@ class AppSettings(
         _comprehensionMode.value = mode
     }
 
+    /** Stores [enabled] and publishes it to [autoAiProcessingEnabled]. */
+    fun setAutoAiProcessingEnabled(enabled: Boolean) {
+        store.putString(KEY_AUTO_AI_PROCESSING, enabled.toString())
+        _autoAiProcessingEnabled.value = enabled
+    }
+
     companion object {
         /** Pick online or local automatically based on connectivity. */
         const val MODE_AUTO = "auto"
@@ -191,6 +202,7 @@ class AppSettings(
         private const val KEY_TRANSCRIPTION_MODE = "transcription_mode"
         private const val KEY_TRANSCRIPTION_LOCAL_MODEL = "transcription_local_model"
         private const val KEY_COMPREHENSION_MODE = "comprehension_mode"
+        private const val KEY_AUTO_AI_PROCESSING = "auto_ai_processing_enabled"
     }
 }
 
