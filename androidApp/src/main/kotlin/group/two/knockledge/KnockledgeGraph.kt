@@ -14,6 +14,7 @@ import group.two.knockledge.pipeline.PlaceholderTranscriber
 import group.two.knockledge.pipeline.RewindPipeline
 import group.two.knockledge.pipeline.Summarizer
 import group.two.knockledge.pipeline.Transcriber
+import group.two.knockledge.sensor.KnockGestureDetector
 
 /**
  * The app's dependency aggregate. Dagger builds the real one (see di/KnockledgeComponent);
@@ -36,13 +37,21 @@ class KnockledgeGraph(
         summarizer: Summarizer = PlaceholderSummarizer(),
         recents: RecentsRepository = InMemoryRecentsRepository(),
         buffer: LocalAudioRingBuffer,
+        knockDetector: KnockGestureDetector = object : KnockGestureDetector {
+            override fun startListening(onKnockDetected: () -> Unit) = Unit
+            override fun stopListening() = Unit
+            override val isListening: Boolean = false
+        },
     ) : this(
         controller = KnockledgeController(
-            audioSource = audioSource,
+            capturer = group.two.knockledge.audio.RingAudioCapturer(
+                audioSource = audioSource,
+                buffer = buffer,
+            ),
+            knockDetector = knockDetector,
             hooks = hooks,
             pipeline = RewindPipeline(transcriber, summarizer, preprocessor),
             recents = recents,
-            buffer = buffer,
         ),
         recents = recents,
         models = null,

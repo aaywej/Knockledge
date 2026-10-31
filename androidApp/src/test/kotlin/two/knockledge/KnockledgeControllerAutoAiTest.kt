@@ -1,6 +1,7 @@
 import group.two.knockledge.KnockledgeController
 import group.two.knockledge.audio.AudioSource
 import group.two.knockledge.audio.InputStatus
+import group.two.knockledge.audio.RingAudioCapturer
 import group.two.knockledge.audio.SessionHooks
 import group.two.knockledge.core.FileLocalAudioRingBuffer
 import group.two.knockledge.data.InMemoryRecentsRepository
@@ -12,6 +13,7 @@ import group.two.knockledge.pipeline.PlaceholderTranscriber
 import group.two.knockledge.pipeline.RewindPipeline
 import group.two.knockledge.pipeline.Summary
 import group.two.knockledge.pipeline.TranscriptResult
+import group.two.knockledge.sensor.KnockGestureDetector
 import group.two.knockledge.settings.AppSettings
 import group.two.knockledge.settings.MemoryStore
 import kotlinx.coroutines.delay
@@ -66,6 +68,12 @@ class KnockledgeControllerAutoAiTest {
         override fun onSessionStopped() = Unit
     }
 
+    private class FakeDetector : KnockGestureDetector {
+        override val isListening: Boolean = false
+        override fun startListening(onKnockDetected: () -> Unit) = Unit
+        override fun stopListening() = Unit
+    }
+
     @AfterTest
     fun cleanup() {
         tempDir.deleteRecursively()
@@ -81,7 +89,8 @@ class KnockledgeControllerAutoAiTest {
         ringBuffer.write(ShortArray(160_000))
 
         val controller = KnockledgeController(
-            audioSource = NoOpAudioSource(),
+            capturer = RingAudioCapturer(NoOpAudioSource(), ringBuffer),
+            knockDetector = FakeDetector(),
             hooks = NoOpHooks(),
             pipeline = RewindPipeline(
                 transcriber = PlaceholderTranscriber(),
@@ -89,7 +98,6 @@ class KnockledgeControllerAutoAiTest {
                 preprocessor = DefaultAudioPreprocessor(),
             ),
             recents = InMemoryRecentsRepository(),
-            buffer = ringBuffer,
             noteSink = sink,
             autoAiProcessingEnabled = settings.autoAiProcessingEnabled,
         )
@@ -114,7 +122,8 @@ class KnockledgeControllerAutoAiTest {
         ringBuffer.write(ShortArray(160_000) { 2_000 })
 
         val controller = KnockledgeController(
-            audioSource = NoOpAudioSource(),
+            capturer = RingAudioCapturer(NoOpAudioSource(), ringBuffer),
+            knockDetector = FakeDetector(),
             hooks = NoOpHooks(),
             pipeline = RewindPipeline(
                 transcriber = PlaceholderTranscriber(),
@@ -122,7 +131,6 @@ class KnockledgeControllerAutoAiTest {
                 preprocessor = DefaultAudioPreprocessor(),
             ),
             recents = InMemoryRecentsRepository(),
-            buffer = ringBuffer,
             noteSink = sink,
             autoAiProcessingEnabled = settings.autoAiProcessingEnabled,
         )

@@ -3,12 +3,14 @@ package two.knockledge
 import group.two.knockledge.KnockledgeController
 import group.two.knockledge.audio.AudioSource
 import group.two.knockledge.audio.NoopSessionHooks
+import group.two.knockledge.audio.RingAudioCapturer
 import group.two.knockledge.core.LocalAudioRingBuffer
 import group.two.knockledge.data.InMemoryRecentsRepository
 import group.two.knockledge.pipeline.DefaultAudioPreprocessor
 import group.two.knockledge.pipeline.PlaceholderSummarizer
 import group.two.knockledge.pipeline.PlaceholderTranscriber
 import group.two.knockledge.pipeline.RewindPipeline
+import group.two.knockledge.sensor.KnockGestureDetector
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
@@ -40,12 +42,17 @@ class RewinderSaveThresholdTest {
         val minSaveSeconds = MutableStateFlow(5) // Requires 5 seconds
         val pipeline = RewindPipeline(PlaceholderTranscriber(), PlaceholderSummarizer(), DefaultAudioPreprocessor())
 
+        val dummyDetector = object : KnockGestureDetector {
+            override val isListening: Boolean = false
+            override fun startListening(onKnockDetected: () -> Unit) = Unit
+            override fun stopListening() = Unit
+        }
         val controller = KnockledgeController(
-            audioSource = DummySource(chunks = 1),
+            capturer = RingAudioCapturer(DummySource(chunks = 1), dummyBuffer),
+            knockDetector = dummyDetector,
             hooks = NoopSessionHooks,
             pipeline = pipeline,
             recents = InMemoryRecentsRepository(),
-            buffer = dummyBuffer,
             minAudioSaveSeconds = minSaveSeconds,
         )
 

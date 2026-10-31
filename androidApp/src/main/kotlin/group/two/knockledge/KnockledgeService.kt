@@ -121,9 +121,7 @@ class KnockledgeService : Service() {
                 }
                 .distinctUntilChanged()
                 .collect { model ->
-                    if (model.running && !knock.isListening) knock.startListening { controller.rewind() }
                     if (!model.running) {
-                        knock.stopListening()
                         stopForeground(STOP_FOREGROUND_REMOVE)
                         stopSelf()
                     } else {
@@ -179,10 +177,9 @@ class KnockledgeService : Service() {
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
-    /** Stops gesture listening, cancels the state collector and drops the projection flag. */
+    /** Cancels the state collector and drops the projection flag. */
     override fun onDestroy() {
         DeviceAudioConsent.foregroundReady = false
-        knock.stopListening()
         scope.cancel()
         super.onDestroy()
     }

@@ -34,6 +34,7 @@ import group.two.knockledge.audio.AndroidAudioSource
 import group.two.knockledge.audio.AndroidDeviceAudioSource
 import group.two.knockledge.audio.AudioSource
 import group.two.knockledge.audio.MixedAudioSource
+import group.two.knockledge.audio.RingAudioCapturer
 import group.two.knockledge.audio.SessionHooks
 import group.two.knockledge.core.LocalAudioRingBuffer
 import group.two.knockledge.data.AuthRepository
@@ -57,6 +58,7 @@ import group.two.knockledge.pipeline.ResourcePromptProvider
 import group.two.knockledge.pipeline.RewindPipeline
 import group.two.knockledge.pipeline.Summarizer
 import group.two.knockledge.pipeline.Transcriber
+import group.two.knockledge.sensor.KnockGestureDetector
 import group.two.knockledge.settings.AppSettings
 import group.two.knockledge.settings.InputSources
 import group.two.knockledge.settings.KeyValueStore
@@ -268,28 +270,41 @@ object KnockledgeModule {
     @Singleton
     fun noteSink(notes: NoteRepository, auth: AuthRepository): NoteSink = SnapshotNoteSink(notes, auth)
 
-    /** The session controller, with the buffer window taken from settings. */
+    /** Audio capturer that manages continuous ring buffer ingestion. */
+    @Provides
+    @Singleton
+    fun ringAudioCapturer(
+        audioSource: AudioSource,
+        buffer: LocalAudioRingBuffer,
+        settings: AppSettings,
+    ): RingAudioCapturer =
+        RingAudioCapturer(
+            audioSource = audioSource,
+            buffer = buffer,
+            windowSeconds = settings.bufferDurationSeconds,
+        )
+
+    /** The session controller coordinating audio capture, knock gestures, and rewinds. */
     @Provides
     @Singleton
     fun controller(
-        audioSource: AudioSource,
+        capturer: RingAudioCapturer,
+        knock: KnockGestureDetector,
         hooks: SessionHooks,
         pipeline: RewindPipeline,
         recents: RecentsRepository,
-        buffer: LocalAudioRingBuffer,
         sink: NoteSink,
         settings: AppSettings,
     ): KnockledgeController =
         KnockledgeController(
-            audioSource,
-            hooks,
-            pipeline,
-            recents,
-            buffer,
-            sink,
-            settings.bufferDurationSeconds,
-            settings.minAudioSaveSeconds,
-            settings.autoAiProcessingEnabled,
+            capturer = capturer,
+            knockDetector = knock,
+            hooks = hooks,
+            pipeline = pipeline,
+            recents = recents,
+            noteSink = sink,
+            minAudioSaveSeconds = settings.minAudioSaveSeconds,
+            autoAiProcessingEnabled = settings.autoAiProcessingEnabled,
         )
 
     /** Settings and model picker, told at creation whether this device supports playback capture. */

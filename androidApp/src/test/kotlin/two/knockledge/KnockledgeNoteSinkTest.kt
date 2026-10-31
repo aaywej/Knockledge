@@ -2,6 +2,7 @@ package group.two.knockledge
 
 import group.two.knockledge.audio.AudioSource
 import group.two.knockledge.audio.NoopSessionHooks
+import group.two.knockledge.audio.RingAudioCapturer
 import group.two.knockledge.core.LocalAudioRingBuffer
 import group.two.knockledge.data.InMemoryRecentsRepository
 import group.two.knockledge.data.TriggerType
@@ -14,6 +15,7 @@ import group.two.knockledge.pipeline.SummaryRequest
 import group.two.knockledge.pipeline.Transcriber
 import group.two.knockledge.pipeline.TranscriptResult
 import group.two.knockledge.pipeline.TranscriptionEngineType
+import group.two.knockledge.sensor.KnockGestureDetector
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -83,14 +85,19 @@ class KnockledgeNoteSinkTest {
             },
             DefaultAudioPreprocessor(),
         )
+        val dummyDetector = object : KnockGestureDetector {
+            override val isListening: Boolean = false
+            override fun startListening(onKnockDetected: () -> Unit) = Unit
+            override fun stopListening() = Unit
+        }
         val controller = KnockledgeController(
-            FakeSource(),
-            NoopSessionHooks,
-            pipeline,
-            InMemoryRecentsRepository(),
-            FakeBuffer(wav()),
-            sink,
-            MutableStateFlow(2),
+            capturer = RingAudioCapturer(FakeSource(), FakeBuffer(wav())),
+            knockDetector = dummyDetector,
+            hooks = NoopSessionHooks,
+            pipeline = pipeline,
+            recents = InMemoryRecentsRepository(),
+            noteSink = sink,
+            minAudioSaveSeconds = MutableStateFlow(2),
         )
 
         controller.start()
