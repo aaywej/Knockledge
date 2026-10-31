@@ -66,7 +66,7 @@ import javax.inject.Singleton
  * Process-wide graph, created once by KnockledgeApplication and shared by the activity and the service.
  */
 @Singleton
-@Component(modules = [KnockledgeModule::class, DataModule::class, KnockRecordingModule::class])
+@Component(modules = [KnockledgeModule::class, DataModule::class, KnockRecordingModule::class, AudioModule::class])
 interface KnockledgeComponent {
     /** Auth and notes only, for the network-triggered sync. */
     fun data(): DataGraph

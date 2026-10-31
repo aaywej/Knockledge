@@ -40,6 +40,24 @@ class FirebaseAiTranscriberTest {
     }
 
     @Test
+    fun parsesChapterMarkers() = runBlocking {
+        val gemini = FakeGemini(
+            """{"detectedLanguage":"en","sentences":[{"speaker":"Speaker 1","startTimeMs":0,"endTimeMs":5000,"text":"Hello world"}],
+            "chapters":[
+            {"startTimeMs":0,"title":"Introduction","keyBullets":["Greeting"]},
+            {"startTimeMs":30000,"title":"Main Point","keyBullets":["Discussion point"]}
+            ]}"""
+        )
+        val r = FirebaseAiTranscriber(gemini).process(segment)
+        assertEquals(2, r.chapters.size)
+        assertEquals("Introduction", r.chapters[0].title)
+        assertEquals(0L, r.chapters[0].startTimeMs)
+        assertEquals(listOf("Greeting"), r.chapters[0].keyBullets)
+        assertEquals("Main Point", r.chapters[1].title)
+        assertEquals(30000L, r.chapters[1].startTimeMs)
+    }
+
+    @Test
     fun singleSpeakerIsNotDiarized() = runBlocking {
         val gemini = FakeGemini(
             """{"detectedLanguage":"en","sentences":[{"speaker":"Speaker 1","startTimeMs":0,"endTimeMs":5,"text":"hi"}]}"""

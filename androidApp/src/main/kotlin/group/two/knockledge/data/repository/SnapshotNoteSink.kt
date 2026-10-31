@@ -3,6 +3,7 @@ package group.two.knockledge.data.repository
 import group.two.knockledge.data.AudioSnapshotInput
 import group.two.knockledge.data.AuthRepository
 import group.two.knockledge.data.NoteRepository
+import group.two.knockledge.data.ChapterMarkerInput
 import group.two.knockledge.data.SentenceInput
 import group.two.knockledge.data.SummaryInput
 import group.two.knockledge.data.TranscriptInput
@@ -69,6 +70,15 @@ class SnapshotNoteSink(
                 engineType = ModelEngineType.valueOf(transcript.engineType.name),
             ),
         )
+        val chapterInputs = if (transcript.chapters.isNotEmpty()) {
+            transcript.chapters.map {
+                ChapterMarkerInput(it.startTimeMs, it.title, it.keyBullets)
+            }
+        } else {
+            summary.chapters.map {
+                ChapterMarkerInput(it.startTimeMs, it.title, it.keyBullets)
+            }
+        }
         notes.attachSummary(
             note.id,
             user.uid,
@@ -76,7 +86,7 @@ class SnapshotNoteSink(
                 title = summary.title,
                 executiveSummary = summary.gist,
                 keyPoints = summary.points,
-                chapterMarkers = emptyList(),
+                chapterMarkers = chapterInputs,
                 generationMode = if (transcript.engineType == PipelineEngineType.CLOUD_FIREBASE_AI) {
                     AiEngineType.CLOUD_FIREBASE_AI
                 } else {

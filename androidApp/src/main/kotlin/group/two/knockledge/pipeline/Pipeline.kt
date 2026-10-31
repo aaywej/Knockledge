@@ -1,6 +1,7 @@
 package group.two.knockledge.pipeline
 
 import group.two.knockledge.core.formatDuration
+import group.two.knockledge.data.model.ChapterMarker
 import group.two.knockledge.settings.SummaryLanguages
 
 /** Local LLM. Input is the filtered transcript, output is the only thing a user ever sees. */
@@ -23,6 +24,7 @@ data class Summary(
     val gist: String,
     val points: List<String>,
     val redactedCount: Int,
+    val chapters: List<ChapterMarker> = emptyList(),
 )
 
 /** What the pipeline is doing right now, for the UI. */

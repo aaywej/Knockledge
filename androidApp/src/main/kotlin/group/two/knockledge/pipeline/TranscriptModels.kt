@@ -1,5 +1,7 @@
 package group.two.knockledge.pipeline
 
+import group.two.knockledge.data.model.ChapterMarker
+
 /** Where transcription runs: Firebase AI in the cloud, or Whisper on the device. */
 enum class TranscriptionEngineType {
     CLOUD_FIREBASE_AI,
@@ -30,4 +32,5 @@ data class TranscriptResult(
     val isDiarized: Boolean,
     val detectedLanguage: String,
     val engineType: TranscriptionEngineType,
+    val chapters: List<ChapterMarker> = emptyList(),
 )

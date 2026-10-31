@@ -6,6 +6,7 @@ import com.google.firebase.ai.type.GenerativeBackend
 import com.google.firebase.ai.type.Schema
 import com.google.firebase.ai.type.content
 import com.google.firebase.ai.type.generationConfig
+import group.two.knockledge.data.model.ChapterMarker
 import group.two.knockledge.pipeline.AudioSegment
 import group.two.knockledge.pipeline.TranscriptResult
 import group.two.knockledge.pipeline.TranscriptSentence
@@ -22,7 +23,7 @@ interface GeminiClient {
     suspend fun generate(wav: ByteArray, prompt: String): String
 }
 
-/** Firebase AI Logic client that asks Gemini for a JSON transcript with speaker turns. */
+/** Firebase AI Logic client that asks Gemini for a JSON transcript with speaker turns and chapters. */
 class FirebaseGeminiClient : GeminiClient {
     private val model by lazy {
         Firebase.ai(backend = GenerativeBackend.googleAI()).generativeModel(
@@ -44,7 +45,18 @@ class FirebaseGeminiClient : GeminiClient {
                                 optionalProperties = listOf("confidence"),
                             )
                         ),
-                    )
+                        "chapters" to Schema.array(
+                            Schema.obj(
+                                mapOf(
+                                    "startTimeMs" to Schema.long(),
+                                    "title" to Schema.string(),
+                                    "keyBullets" to Schema.array(Schema.string()),
+                                ),
+                                optionalProperties = listOf("keyBullets"),
+                            )
+                        ),
+                    ),
+                    optionalProperties = listOf("chapters"),
                 )
             },
         )
@@ -64,6 +76,7 @@ class FirebaseGeminiClient : GeminiClient {
 private data class GeminiResponse(
     val detectedLanguage: String,
     val sentences: List<GeminiSentence>,
+    val chapters: List<GeminiChapter> = emptyList(),
 )
 
 @Serializable
@@ -73,6 +86,13 @@ private data class GeminiSentence(
     val endTimeMs: Long,
     val text: String,
     val confidence: Float = 1.0f,
+)
+
+@Serializable
+private data class GeminiChapter(
+    val startTimeMs: Long,
+    val title: String,
+    val keyBullets: List<String> = emptyList(),
 )
 
 /** Cloud transcription: uploads each segment to Gemini and maps its JSON reply to [TranscriptResult]. */
@@ -90,12 +110,16 @@ class FirebaseAiTranscriber(private val client: GeminiClient) : TranscriptionEng
         val sentences = root.sentences.map {
             TranscriptSentence(it.speaker, it.startTimeMs, it.endTimeMs, it.text, it.confidence)
         }
+        val chapters = root.chapters.map {
+            ChapterMarker(it.startTimeMs, it.title, it.keyBullets)
+        }
         return TranscriptResult(
             sentences = sentences,
             fullText = sentences.joinToString(" ") { it.text },
             isDiarized = sentences.map { it.speaker }.distinct().size > 1,
             detectedLanguage = root.detectedLanguage,
             engineType = engineType,
+            chapters = chapters,
         )
     }
 
@@ -112,7 +136,7 @@ class FirebaseAiTranscriber(private val client: GeminiClient) : TranscriptionEng
 
     private companion object {
         const val PROMPT = "Transcribe this audio verbatim. The language may be English, Filipino or Taglish. " +
-            "Separate speaker turns as Speaker 1, Speaker 2, and so on, with millisecond start and end times."
+            "Separate speaker turns as Speaker 1, Speaker 2, and so on, with millisecond start and end times. " +
+            "Also divide the speech into timestamped chapters with titles and key bullet points."
     }
 }
-
