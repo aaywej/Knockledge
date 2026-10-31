@@ -13,7 +13,6 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import javax.inject.Inject
-import kotlin.math.sqrt
 
 class AndroidKnockGestureDetector @Inject constructor(app: Application) : KnockGestureDetector {
     private val sensors = app.getSystemService(Context.SENSOR_SERVICE) as SensorManager
@@ -23,23 +22,40 @@ class AndroidKnockGestureDetector @Inject constructor(app: Application) : KnockG
         @Suppress("DEPRECATION")
         app.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
     }
+    private val tap = TapRT(160_000_000L)
     private var thread: HandlerThread? = null
     private var listener: SensorEventListener? = null
+    private var lastDetectionNs = 0L
+
+    var evaluationListener: HeuristicEvaluationListener?
+        get() = tap.evaluationListener
+        set(value) {
+            tap.evaluationListener = value
+        }
 
     override val isListening: Boolean get() = listener != null
 
     override fun startListening(onKnockDetected: () -> Unit) {
         if (isListening) return
-        val linear = sensors.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
-        val sensor = linear ?: sensors.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) ?: return
-        val filter = if (linear == null) GravityHighPass() else null
-        val matcher = KnockPeakMatcher()
+        val accelerometer = sensors.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) ?: return
+        tap.getLowpassKey().setPara(1f)
+        tap.getHighpassKey().setPara(0.3f)
+        tap.getPositivePeakDetector().setMinNoiseTolerate(0.15f)
+        tap.getPositivePeakDetector().setWindowSize(8)
+        tap.getNegativePeakDetection().setMinNoiseTolerate(0.15f)
+        tap.getNegativePeakDetection().setWindowSize(8)
+        tap.maxTapPeakThreshold = 6.0f
+        tap.maxTransverseThreshold = 2.5f
+        tap.reset(true)
         val l = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent) {
+                if (event.sensor.type != Sensor.TYPE_ACCELEROMETER) return
                 val v = event.values
-                val magnitude = filter?.magnitude(v[0], v[1], v[2])
-                    ?: sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
-                if (matcher.onSample(magnitude, event.timestamp / 1_000_000L)) {
+                tap.updateData(event.sensor.type, v[0], v[1], v[2], event.timestamp, 2_500_000L, true)
+                if (tap.checkDoubleTapTiming(event.timestamp) == 2
+                    && event.timestamp - lastDetectionNs >= 500_000_000L
+                ) {
+                    lastDetectionNs = event.timestamp
                     vibrator?.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
                     onKnockDetected()
                 }
@@ -50,7 +66,8 @@ class AndroidKnockGestureDetector @Inject constructor(app: Application) : KnockG
         val t = HandlerThread("knock-sensor").also { it.start() }
         thread = t
         listener = l
-        sensors.registerListener(l, sensor, SensorManager.SENSOR_DELAY_GAME, Handler(t.looper))
+        val handler = Handler(t.looper)
+        sensors.registerListener(l, accelerometer, SensorManager.SENSOR_DELAY_FASTEST, handler)
     }
 
     override fun stopListening() {
@@ -58,19 +75,5 @@ class AndroidKnockGestureDetector @Inject constructor(app: Application) : KnockG
         listener = null
         thread?.quitSafely()
         thread = null
-    }
-}
-
-class GravityHighPass(private val alpha: Float = 0.8f) {
-    private val lastIn = FloatArray(3)
-    private val lastOut = FloatArray(3)
-
-    fun magnitude(x: Float, y: Float, z: Float): Float {
-        val input = floatArrayOf(x, y, z)
-        for (i in 0..2) {
-            lastOut[i] = alpha * (lastOut[i] + input[i] - lastIn[i])
-            lastIn[i] = input[i]
-        }
-        return sqrt(lastOut[0] * lastOut[0] + lastOut[1] * lastOut[1] + lastOut[2] * lastOut[2])
     }
 }

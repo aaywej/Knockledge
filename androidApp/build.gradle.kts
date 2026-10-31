@@ -8,6 +8,8 @@ plugins {
 }
 
 dependencies {
+    implementation(project(":sensor"))
+
     implementation(libs.compose.runtime)
     implementation(libs.compose.material3)
     implementation(libs.compose.ui)
@@ -20,6 +22,8 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.test.ext.junit)
+
+
 
     implementation(libs.onnxruntime.android)
     implementation(libs.litertlm.android)
@@ -67,6 +71,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     buildFeatures {
         compose = true
     }
@@ -77,3 +82,5 @@ kotlin {
         jvmTarget = JvmTarget.JVM_11
     }
 }
+
+
