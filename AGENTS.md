@@ -12,9 +12,10 @@ Agents must follow the constitution in [.specify/memory/constitution.md](file://
 4. **Ponytail Simplicity**: Use Android platform APIs and Kotlin standard library first. Favor code deletion over code addition. Require approval for every new dependency.
 5. **Android Best Practices**: Follow official Android architecture guidelines, Jetpack standards, and lifecycle rules.
 6. **No Hard-Coding or Workarounds**: Prohibit hard-coded values, raw strings, and temporary hacks. Ask the user first and obtain explicit approval before using any workaround.
+7. **Domain Layer Governance**: Maintain direct ViewModel-to-Repository communication by default. Consider domain use cases or interactors only when multiple ViewModels share complex multi-repository logic. Always prompt the user for feedback and secure explicit approval before creating any domain use case or interactor.
 
-7. **Shell**: Always run commands with `shell_flavor: "powershell"` and PowerShell syntax. Never use bash.
-8. **Android CLI & Studio**: Use the official `android` CLI for Android tasks. Use `android studio ...` commands during development when an Android Studio instance is running.
+8. **Shell**: Always run commands with `shell_flavor: "powershell"` and PowerShell syntax. Never use bash.
+9. **Android CLI & Studio**: Use the official `android` CLI for Android tasks. Use `android studio ...` commands during development when an Android Studio instance is running.
 
 ## Architecture & Technology Stack
 

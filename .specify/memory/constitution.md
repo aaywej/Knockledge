@@ -1,10 +1,11 @@
 <!--
 SYNC IMPACT REPORT
-- Version change: 1.1.0 -> 1.2.0
+- Version change: 1.2.0 -> 1.3.0
 - List of modified principles:
   - None
 - Added sections:
-  - Kotlin documentation directives under Code Quality and Architecture Directives
+  - VII. Domain Layer and Interactor Governance
+  - Interactor approval requirement under Code Quality and Architecture Directives
 - Removed sections:
   - None
 - Follow-up TODOs:
@@ -63,6 +64,13 @@ Developers and agents MUST NOT hard-code values or introduce temporary workaroun
 - Obtain explicit user approval before you insert any workaround or hard-coded value into code.
 - Rationale: Hard-coded values and workarounds create hidden defects, degrade code quality, and increase technical debt.
 
+### VII. Domain Layer and Interactor Governance
+Direct ViewModel-to-Repository communication MUST serve as the default architecture.
+- Consider domain use cases or interactors ONLY when multiple ViewModels share complex business logic or coordinate multiple repositories.
+- Never introduce single-use or passthrough interactors.
+- Developers and agents MUST prompt the user for feedback and receive explicit user approval before adding any use case, interactor, or domain layer class.
+- Rationale: Unnecessary use cases inflate boilerplate and violate hackathon time limits. User consultation prevents speculative domain abstractions.
+
 ## Technology Stack & Architecture Constraints
 
 The project MUST adhere to the following architecture and component boundaries:
@@ -84,6 +92,7 @@ Development activities MUST pass these quality gates before integration:
 - Define UI strings, dimensions, and theme attributes in Android XML resources or Compose theme tokens.
 - Never use magic literals, hard-coded URLs, or inline credentials.
 - Prompt the user and secure written consent before writing any necessary workaround.
+- Prompt the user and secure explicit approval before creating any domain use case or interactor.
 - Write KDoc comments for all classes and public methods.
 - Add explanatory comments to complex private helper methods.
 
@@ -112,4 +121,4 @@ This constitution supersedes all other documentation, practices, and informal co
   - PATCH: Wording refinements, typo corrections, and non-semantic adjustments.
 - **Compliance Review**: All specifications, implementation plans, and code reviews MUST verify compliance with these rules.
 
-**Version**: 1.2.0 | **Ratified**: 2026-10-29 | **Last Amended**: 2026-10-31
+**Version**: 1.3.0 | **Ratified**: 2026-10-29 | **Last Amended**: 2026-10-31
