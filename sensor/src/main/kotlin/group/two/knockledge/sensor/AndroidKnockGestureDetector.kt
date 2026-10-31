@@ -15,15 +15,18 @@ import android.os.VibratorManager
 import javax.inject.Inject
 
 /** Accelerometer-backed detector: runs [TapRT] on a background handler thread and vibrates on each confirmed double knock. */
-class AndroidKnockGestureDetector @Inject constructor(app: Application) : KnockGestureDetector {
-    private val sensors = app.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-    private val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        (app.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
-    } else {
-        @Suppress("DEPRECATION")
-        app.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+class AndroidKnockGestureDetector @Inject constructor(private val app: Application?) : KnockGestureDetector {
+    private val sensors by lazy { app!!.getSystemService(Context.SENSOR_SERVICE) as SensorManager }
+    private val vibrator: Vibrator? by lazy {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            (app!!.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            app!!.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
     }
     private val tap = TapRT(160_000_000L)
+    private var peakThreshold = 6.0f
     private var thread: HandlerThread? = null
     private var listener: SensorEventListener? = null
     private var lastDetectionNs = 0L
@@ -37,6 +40,15 @@ class AndroidKnockGestureDetector @Inject constructor(app: Application) : KnockG
 
     /** True while a sensor listener is registered. */
     override val isListening: Boolean get() = listener != null
+
+    /** Sets the tap peak amplitude threshold now and for the next [startListening]. */
+    override fun setPeakThreshold(threshold: Float) {
+        peakThreshold = threshold
+        tap.maxTapPeakThreshold = threshold
+    }
+
+    /** Returns the current tap peak amplitude threshold. */
+    override fun getPeakThreshold(): Float = peakThreshold
 
     /**
      * Registers the accelerometer at the fastest rate on a dedicated handler thread, so detection
@@ -52,7 +64,7 @@ class AndroidKnockGestureDetector @Inject constructor(app: Application) : KnockG
         tap.getPositivePeakDetector().setWindowSize(8)
         tap.getNegativePeakDetection().setMinNoiseTolerate(0.15f)
         tap.getNegativePeakDetection().setWindowSize(8)
-        tap.maxTapPeakThreshold = 6.0f
+        tap.maxTapPeakThreshold = peakThreshold
         tap.maxTransverseThreshold = 2.5f
         tap.reset(true)
         val l = object : SensorEventListener {

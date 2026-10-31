@@ -56,22 +56,28 @@ data class KnockledgeState(
     val inputDb: Int? = null,
     val inputWarning: String? = null,
     val error: String? = null,
+    /** User-configured minimum seconds of audio Rewind needs; read live so changes apply at once. */
+    val minSaveSeconds: StateFlow<Int> = MutableStateFlow(RewindPolicy.MIN_REWIND_SECONDS),
 ) {
     /** True while at least one rewind is still being transcribed or summarized. */
     val isSummarizing: Boolean
         get() = pendingRewinds > 0
 
-    /** Only the 3 minute minimum applies. Rewinds may overlap and may be tapped while others process. */
+    /** Configured minimum save duration in milliseconds. */
+    val minSaveMillis: Long
+        get() = minSaveSeconds.value * 1000L
+
+    /** Rewinds may overlap and may be tapped while others process. */
     val canRewind: Boolean
-        get() = isRunning && bufferedMillis >= minOf(RewindPolicy.MIN_REWIND_MILLIS, windowMillis)
+        get() = isRunning && bufferedMillis >= minOf(minSaveMillis, windowMillis)
 
     /** 0..1 progress toward unlocking Rewind. */
     val unlockProgress: Float
-        get() = (bufferedMillis.toFloat() / RewindPolicy.MIN_REWIND_MILLIS).coerceIn(0f, 1f)
+        get() = if (minSaveMillis <= 0L) 1f else (bufferedMillis.toFloat() / minSaveMillis).coerceIn(0f, 1f)
 
     /** Milliseconds of buffering left before Rewind unlocks; 0 once unlocked. */
     val millisUntilUnlock: Long
-        get() = (RewindPolicy.MIN_REWIND_MILLIS - bufferedMillis).coerceAtLeast(0L)
+        get() = (minSaveMillis - bufferedMillis).coerceAtLeast(0L)
 }
 
 /**
@@ -89,6 +95,7 @@ class KnockledgeController(
     private val buffer: LocalAudioRingBuffer,
     private val noteSink: NoteSink? = null,
     windowSeconds: StateFlow<Int> = MutableStateFlow(RewindPolicy.WINDOW_SECONDS),
+    private val minAudioSaveSeconds: StateFlow<Int> = MutableStateFlow(RewindPolicy.MIN_REWIND_SECONDS),
     private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -101,7 +108,7 @@ class KnockledgeController(
     private var silentMillis = 0L
     private var silenceReported = false
 
-    private val _state = MutableStateFlow(KnockledgeState())
+    private val _state = MutableStateFlow(KnockledgeState(minSaveSeconds = minAudioSaveSeconds))
 
     /** Current session state, observed by the UI. */
     val state: StateFlow<KnockledgeState> = _state.asStateFlow()
@@ -123,7 +130,11 @@ class KnockledgeController(
     /** Starts capturing audio into the ring buffer. No-op when already running. */
     fun start() {
         if (captureJob?.isActive == true) return
-        _state.value = KnockledgeState(isRunning = true, windowMillis = _state.value.windowMillis)
+        _state.value = KnockledgeState(
+            isRunning = true,
+            windowMillis = _state.value.windowMillis,
+            minSaveSeconds = minAudioSaveSeconds,
+        )
         silentMillis = 0L
         silenceReported = false
         hooks.onSessionStarted()

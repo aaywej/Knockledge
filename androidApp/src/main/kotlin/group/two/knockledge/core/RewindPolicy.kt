@@ -14,8 +14,8 @@ object RewindPolicy {
     /** Rolling memory. Anything older is overwritten and gone. */
     const val WINDOW_SECONDS: Int = 5 * 60
 
-    /** Rewind stays locked until this much audio is buffered since the last cut. */
-    const val MIN_REWIND_SECONDS: Int = 3 * 60
+    /** Rewind stays locked until this much audio is buffered since the last cut. Default; settings can raise it. */
+    const val MIN_REWIND_SECONDS: Int = 5
 
     const val MIN_REWIND_MILLIS: Long = MIN_REWIND_SECONDS * 1000L
     const val WINDOW_MILLIS: Long = WINDOW_SECONDS * 1000L

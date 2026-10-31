@@ -10,4 +10,10 @@ interface KnockGestureDetector {
 
     /** Whether a sensor listener is currently registered. */
     val isListening: Boolean
+
+    /** Changes the knock peak amplitude threshold; applies while listening and on the next start. */
+    fun setPeakThreshold(threshold: Float) {}
+
+    /** The current knock peak amplitude threshold. */
+    fun getPeakThreshold(): Float = 6.0f
 }

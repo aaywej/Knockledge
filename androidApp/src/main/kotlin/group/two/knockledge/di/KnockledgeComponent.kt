@@ -18,6 +18,7 @@ import group.two.knockledge.ai.AiControls
 import group.two.knockledge.ai.AndroidModelStorage
 import group.two.knockledge.ai.AndroidSpeechEngine
 import group.two.knockledge.ai.AndroidTextEngine
+import group.two.knockledge.ai.FirebaseAiSummarizer
 import group.two.knockledge.ai.FirebaseAiTranscriber
 import group.two.knockledge.ai.FirebaseGeminiClient
 import group.two.knockledge.ai.HttpModelDownloader
@@ -47,6 +48,7 @@ import group.two.knockledge.models.ModelFiles
 import group.two.knockledge.models.ModelProvider
 import group.two.knockledge.models.ModelStorage
 import group.two.knockledge.models.ModelStore
+import group.two.knockledge.pipeline.CompositeSummarizer
 import group.two.knockledge.pipeline.CompositeTranscriber
 import group.two.knockledge.pipeline.RegexSensitiveFilter
 import group.two.knockledge.pipeline.RewindPipeline
@@ -165,12 +167,13 @@ object KnockledgeModule {
     /** Firebase AI while the network is up, on-device Whisper otherwise. */
     @Provides
     @Singleton
-    fun transcriber(onDevice: OnDeviceTranscriber, app: Application): Transcriber {
+    fun transcriber(onDevice: OnDeviceTranscriber, app: Application, settings: AppSettings): Transcriber {
         val cm = app.getSystemService(ConnectivityManager::class.java)
         return CompositeTranscriber(
             online = FirebaseAiTranscriber(FirebaseGeminiClient()),
             offline = WhisperTranscriberAdapter { onDevice.transcribe(it) },
             isOnline = { cm.getNetworkCapabilities(cm.activeNetwork)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true },
+            mode = { settings.transcriptionMode.value },
         )
     }
 
@@ -183,14 +186,23 @@ object KnockledgeModule {
         @Named("inferenceThreads") threads: Int,
         system: SystemModelEngine?,
         settings: AppSettings,
-    ): Summarizer = OnDeviceSummarizer(
-        engine = engine,
-        files = files,
-        threads = threads,
-        system = system,
-        selected = { settings.summaryModel.value },
-        outputLanguage = { settings.summaryLanguage.value },
-    )
+        app: Application,
+    ): Summarizer {
+        val cm = app.getSystemService(ConnectivityManager::class.java)
+        return CompositeSummarizer(
+            online = FirebaseAiSummarizer { settings.summaryLanguage.value },
+            offline = OnDeviceSummarizer(
+                engine = engine,
+                files = files,
+                threads = threads,
+                system = system,
+                selected = { settings.summaryModel.value },
+                outputLanguage = { settings.summaryLanguage.value },
+            ),
+            isOnline = { cm.getNetworkCapabilities(cm.activeNetwork)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true },
+            mode = { settings.comprehensionMode.value },
+        )
+    }
 
     /** Regex rules that blank out passwords, numbers and other personal details in transcripts. */
     @Provides
@@ -252,7 +264,16 @@ object KnockledgeModule {
         sink: NoteSink,
         settings: AppSettings,
     ): KnockledgeController =
-        KnockledgeController(audioSource, hooks, pipeline, recents, buffer, sink, settings.bufferDurationSeconds)
+        KnockledgeController(
+            audioSource,
+            hooks,
+            pipeline,
+            recents,
+            buffer,
+            sink,
+            settings.bufferDurationSeconds,
+            settings.minAudioSaveSeconds,
+        )
 
     /** Settings and model picker, told at creation whether this device supports playback capture. */
     @Provides

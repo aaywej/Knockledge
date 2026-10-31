@@ -11,10 +11,10 @@ import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.IBinder
 import group.two.knockledge.audio.DeviceAudioConsent
-import group.two.knockledge.core.RewindPolicy
 import group.two.knockledge.core.formatDuration
 import group.two.knockledge.data.TriggerType
 import group.two.knockledge.sensor.KnockGestureDetector
+import group.two.knockledge.settings.AppSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -36,6 +36,7 @@ class KnockledgeService : Service() {
 
     @Inject lateinit var controller: KnockledgeController
     @Inject lateinit var knock: KnockGestureDetector
+    @Inject lateinit var settings: AppSettings
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var observeJob: Job? = null
@@ -69,7 +70,16 @@ class KnockledgeService : Service() {
             ACTION_STOP -> controller.stop()
             ACTION_REWIND -> controller.rewind(TriggerType.MANUAL)
             else -> {
-                val first = build(NotificationModel(true, 0L, canRewind = false, summarizing = false))
+                val state = controller.state.value
+                val first = build(
+                    NotificationModel(
+                        true, 0L,
+                        canRewind = false,
+                        summarizing = false,
+                        minSaveMillis = state.minSaveMillis,
+                        millisUntilUnlock = state.millisUntilUnlock,
+                    )
+                )
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     // The mediaProjection type is only allowed after the user said yes to the
                     // screen-capture prompt for this session (phone audio on).
@@ -94,6 +104,9 @@ class KnockledgeService : Service() {
 
     private fun observe() {
         if (observeJob != null) return
+        scope.launch {
+            settings.knockSensorThreshold.collect { knock.setPeakThreshold(it) }
+        }
         observeJob = scope.launch {
             controller.state
                 .map {
@@ -102,6 +115,8 @@ class KnockledgeService : Service() {
                         bufferedSeconds = it.bufferedMillis / 1000L,
                         canRewind = it.canRewind,
                         summarizing = it.isSummarizing,
+                        minSaveMillis = it.minSaveMillis,
+                        millisUntilUnlock = it.millisUntilUnlock,
                     )
                 }
                 .distinctUntilChanged()
@@ -123,7 +138,7 @@ class KnockledgeService : Service() {
         val text = when {
             model.summarizing -> "Summarizing..."
             model.canRewind -> "${formatDuration(bufferedMillis)} in memory. Rewind is ready."
-            else -> "Rewind unlocks in ${formatDuration(RewindPolicy.MIN_REWIND_MILLIS - bufferedMillis)}"
+            else -> "Rewind unlocks in ${formatDuration(model.millisUntilUnlock)}"
         }
         val openApp = PendingIntent.getActivity(
             this, 0,
@@ -145,7 +160,7 @@ class KnockledgeService : Service() {
             .setColor(0xFFD7372B.toInt())
 
         if (!model.canRewind && !model.summarizing) {
-            builder.setProgress(RewindPolicy.MIN_REWIND_SECONDS, model.bufferedSeconds.toInt(), false)
+            builder.setProgress((model.minSaveMillis / 1000L).toInt(), model.bufferedSeconds.toInt(), false)
         }
         if (model.canRewind) {
             builder.addAction(Notification.Action.Builder(icon, "Rewind", actionIntent(ACTION_REWIND, 1)).build())
@@ -177,6 +192,8 @@ class KnockledgeService : Service() {
         val bufferedSeconds: Long,
         val canRewind: Boolean,
         val summarizing: Boolean,
+        val minSaveMillis: Long,
+        val millisUntilUnlock: Long,
     )
 
     private companion object {
