@@ -1,17 +1,18 @@
 package group.two.knockledge.di
 
-import dagger.Binds
+import android.app.Application
 import dagger.Module
+import dagger.Provides
 import group.two.knockledge.audio.AndroidAudioPlayer
 import group.two.knockledge.audio.AudioPlayer
 import javax.inject.Singleton
 
 /** Provides audio playback hardware binding. */
 @Module
-abstract class AudioModule {
+object AudioModule {
 
-    /** Binds the platform MediaPlayer audio player implementation. */
-    @Binds
+    /** Provides the platform MediaPlayer audio player implementation. */
+    @Provides
     @Singleton
-    abstract fun bindAudioPlayer(impl: AndroidAudioPlayer): AudioPlayer
+    fun provideAudioPlayer(app: Application): AudioPlayer = AndroidAudioPlayer(app)
 }

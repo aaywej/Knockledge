@@ -2,25 +2,22 @@ package group.two.knockledge.pipeline
 
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
-import ai.onnxruntime.OrtSession
 import android.util.Log
-import java.io.File
 import java.nio.FloatBuffer
 import java.nio.LongBuffer
 import kotlin.math.min
 
 /**
- * Production [VadDetector] running the downloaded Silero VAD ONNX model through ONNX
- * Runtime. The model file is opened lazily on first [detect]; when it is missing or
- * fails to load, detection degrades to [FallbackEnergyVadDetector] so the rewind
+ * Production [VadDetector] running the bundled Silero VAD ONNX model through ONNX
+ * Runtime. The model bytes are loaded lazily on first [detect]; when missing or
+ * failing to load, detection degrades to [FallbackEnergyVadDetector] so the rewind
  * pipeline keeps working.
  *
- * @property modelPath Absolute path of the installed Silero ONNX file, read lazily;
- *   typically `ModelFiles.pathOf(ModelCatalog.sileroOnnx)`. Null means not installed.
+ * @property modelBytes Lambda returning the bytes of the Silero ONNX model, read lazily. Null means unavailable.
  * @property config Frame sizing and speech probability threshold.
  */
 class OnnxSileroVadDetector(
-    private val modelPath: () -> String?,
+    private val modelBytes: () -> ByteArray?,
     private val config: SileroVadConfig = SileroVadConfig(),
 ) : VadDetector {
 
@@ -39,8 +36,8 @@ class OnnxSileroVadDetector(
 
     /** Builds the ONNX-backed detector, or null when the model file cannot be read. */
     private fun loadNeural(): VadDetector? = try {
-        modelPath()?.let { OnnxDetector(File(it).readBytes(), config) }
-    } catch (e: Exception) {
+        modelBytes()?.let { OnnxDetector(it, config) }
+    } catch (_: Exception) {
         null
     }
 

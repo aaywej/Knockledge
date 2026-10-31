@@ -75,7 +75,7 @@ class ModelStore(
         get() = ModelCatalog.qwenById(selectedSummaryModel())
 
     private val files: List<ModelFile>
-        get() = listOfNotNull(ModelCatalog.whisper, ModelCatalog.vad, ModelCatalog.sileroOnnx, summarizerModel)
+        get() = listOfNotNull(ModelCatalog.whisper, ModelCatalog.vad, summarizerModel)
 
     private val totalBytes: Long
         get() = files.sumOf { it.approxBytes }

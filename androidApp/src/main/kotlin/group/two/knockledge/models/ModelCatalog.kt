@@ -36,15 +36,6 @@ object ModelCatalog {
         approxBytes = 885_000L,
     )
 
-    /** Silero VAD v5.1.2 in ONNX format, executed by ONNX Runtime for rewind pre-processing. */
-    val sileroOnnx = ModelFile(
-        id = "vad_onnx",
-        label = "Silero VAD (ONNX)",
-        url = "https://github.com/snakers4/silero-vad/raw/v5.1.2/src/silero_vad/data/silero_vad.onnx",
-        fileName = "silero_vad.onnx",
-        approxBytes = 2_330_000L,
-    )
-
     val qwen2b = ModelFile(
         id = "qwen2b",
         label = "Qwen3.5 2B",
@@ -61,7 +52,7 @@ object ModelCatalog {
         approxBytes = 507_000_000L,
     )
 
-    val all: List<ModelFile> = listOf(whisper, vad, sileroOnnx, qwen2b, qwen08b)
+    val all: List<ModelFile> = listOf(whisper, vad, qwen2b, qwen08b)
     val qwenModels: List<ModelFile> = listOf(qwen2b, qwen08b)
 
     /** A "4 GB" device reports roughly 3.5 to 3.8 GB of total memory. */

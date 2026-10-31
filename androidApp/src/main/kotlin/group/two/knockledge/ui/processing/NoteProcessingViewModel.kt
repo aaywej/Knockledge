@@ -10,6 +10,8 @@ import group.two.knockledge.data.SentenceInput
 import group.two.knockledge.data.SummaryInput
 import group.two.knockledge.data.TranscriptInput
 import group.two.knockledge.data.model.AiEngineType
+import group.two.knockledge.notification.AiNotificationNotifier
+import group.two.knockledge.notification.NoopAiNotificationNotifier
 import group.two.knockledge.pipeline.PipelineResult
 import group.two.knockledge.pipeline.RewindPipeline
 import group.two.knockledge.pipeline.RewindStage
@@ -34,6 +36,7 @@ class NoteProcessingViewModel(
     private val notes: NoteRepository,
     private val auth: AuthRepository,
     private val pipeline: RewindPipeline,
+    private val notifier: AiNotificationNotifier = NoopAiNotificationNotifier,
     coroutineScope: CoroutineScope? = null,
 ) : ViewModel(), NoteProcessingController {
 
@@ -163,6 +166,8 @@ class NoteProcessingViewModel(
                         },
                     ),
                 )
+
+                notifier.notifyAiComplete(success.summary.title, success.summary.gist)
 
                 _processingState.update {
                     it.copy(

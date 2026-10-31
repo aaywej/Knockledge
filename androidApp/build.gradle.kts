@@ -92,6 +92,10 @@ android {
         compose = true
         buildConfig = true
     }
+
+    androidResources {
+        noCompress += "onnx"
+    }
 }
 
 kotlin {

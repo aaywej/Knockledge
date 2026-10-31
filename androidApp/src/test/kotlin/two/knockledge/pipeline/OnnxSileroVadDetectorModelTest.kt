@@ -24,12 +24,16 @@ import two.knockledge.testing.AudioFixturePipeline
 class OnnxSileroVadDetectorModelTest {
 
     private val config = SileroVadConfig()
-    private val modelFile = File("src/test/resources-local/silero_vad.onnx")
+    private val modelFile = sequenceOf(
+        File("src/main/assets/silero_vad.onnx"),
+        File("androidApp/src/main/assets/silero_vad.onnx"),
+        File("src/test/resources-local/silero_vad.onnx"),
+    ).firstOrNull { it.isFile && it.length() > 0 } ?: File("src/main/assets/silero_vad.onnx")
     private val sampleWavFile = File("src/androidTest/assets/sample.wav")
 
     private fun assumeModel(): File {
         assumeTrue(
-            "silero_vad.onnx missing; run scripts/fetch-vad-model.ps1",
+            "silero_vad.onnx missing in src/main/assets/",
             modelFile.isFile && modelFile.length() > 0,
         )
         return modelFile
@@ -37,13 +41,13 @@ class OnnxSileroVadDetectorModelTest {
 
     private fun createNeuralPreprocessor(): SileroAudioPreprocessor {
         val model = assumeModel()
-        return SileroAudioPreprocessor(OnnxSileroVadDetector({ model.absolutePath }), config)
+        return SileroAudioPreprocessor(OnnxSileroVadDetector({ model.readBytes() }), config)
     }
 
     @Test
     fun loadsTheNeuralModelFromDisk() {
         val model = assumeModel()
-        val detector = OnnxSileroVadDetector({ model.absolutePath })
+        val detector = OnnxSileroVadDetector({ model.readBytes() })
 
         assertTrue(detector.isNeural)
         detector.close()
@@ -52,7 +56,7 @@ class OnnxSileroVadDetectorModelTest {
     @Test
     fun silenceDetectsNoSpeechFrames() {
         val model = assumeModel()
-        val detector = OnnxSileroVadDetector({ model.absolutePath })
+        val detector = OnnxSileroVadDetector({ model.readBytes() })
 
         val pcm = ShortArray(2 * config.sampleRate)
         val mask = detector.detect(pcm, config.sampleRate)
@@ -65,7 +69,7 @@ class OnnxSileroVadDetectorModelTest {
     @Test
     fun returnsOneFlagPerFrameForSyntheticInput() {
         val model = assumeModel()
-        val detector = OnnxSileroVadDetector({ model.absolutePath })
+        val detector = OnnxSileroVadDetector({ model.readBytes() })
 
         // Loud synthetic tone: exercises the session without asserting it is speech.
         val pcm = ShortArray(config.sampleRate) {
@@ -109,7 +113,7 @@ class OnnxSileroVadDetectorModelTest {
     @Test
     fun realModelClassifiesStationaryNoiseAsNonSpeech() {
         val model = assumeModel()
-        val detector = OnnxSileroVadDetector({ model.absolutePath })
+        val detector = OnnxSileroVadDetector({ model.readBytes() })
         val noise = AudioFixturePipeline.stationaryNoise(durationSeconds = 2.0, amplitude = 800)
 
         val mask = detector.detect(noise, config.sampleRate)

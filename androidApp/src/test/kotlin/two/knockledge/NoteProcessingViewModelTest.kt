@@ -196,4 +196,47 @@ class NoteProcessingViewModelTest {
         assertFalse(state.isProcessing)
         assertEquals("Audio file missing.", state.errorMessage)
     }
+
+    @Test
+    fun processNoteTriggersAiNotificationOnCompletion(): Unit = runBlocking {
+        var notifiedTitle: String? = null
+        var notifiedSummary: String? = null
+        val testNotifier = object : group.two.knockledge.notification.AiNotificationNotifier {
+            override fun notifyAiComplete(title: String, summaryText: String) {
+                notifiedTitle = title
+                notifiedSummary = summaryText
+            }
+        }
+
+        val wav = createDummyWavFile()
+        val note = Note(
+            id = "note-notify",
+            userId = user.uid,
+            title = "Test Note",
+            createdAtEpochMs = 1_000L,
+            updatedAtEpochMs = 1_000L,
+            audio = AudioMetadata(wav.absolutePath, null, 1_000L, 16_000, TriggerType.GESTURE),
+        )
+        val notesRepo = FakeNotes(note)
+        val authRepo = FakeAuth(user)
+        val pipeline = RewindPipeline(
+            transcriber = PlaceholderTranscriber(),
+            preprocessor = DefaultAudioPreprocessor(),
+            summarizer = PlaceholderSummarizer(),
+        )
+
+        val vm = NoteProcessingViewModel(
+            notes = notesRepo,
+            auth = authRepo,
+            pipeline = pipeline,
+            notifier = testNotifier,
+            coroutineScope = CoroutineScope(Dispatchers.Unconfined),
+        )
+
+        vm.processNote("note-notify")
+        awaitIdle(vm)
+
+        assertEquals("Untitled rewind", notifiedTitle)
+        assertTrue(notifiedSummary != null)
+    }
 }
