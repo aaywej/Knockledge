@@ -8,9 +8,9 @@
     <string name="playback_error">Playback error</string>
 
     <!-- Tabs -->
-    <string name="tab_record">Record &amp; Knock</string>
-    <string name="tab_notes">Notes &amp; Review</string>
-    <string name="tab_settings">Settings &amp; Auth</string>
+    <string name="tab_record">Record</string>
+    <string name="tab_notes">Notes</string>
+    <string name="tab_settings">Settings</string>
 
     <!-- Record Tab / Knock Feedback -->
     <string name="record_tab_title">Live Audio Buffer &amp; Knock Test</string>

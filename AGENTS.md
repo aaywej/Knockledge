@@ -16,6 +16,7 @@ Agents must follow the constitution in [.specify/memory/constitution.md](file://
 
 8. **Shell**: Always run commands with `shell_flavor: "powershell"` and PowerShell syntax. Never use bash.
 9. **Android CLI & Studio**: Use the official `android` CLI for Android tasks. Use `android studio ...` commands during development when an Android Studio instance is running.
+10. **Build Discretion**: Do not run a build for every code change. Decide whether a build is necessary when you provision changes.
 
 ## Architecture & Technology Stack
 
@@ -33,3 +34,4 @@ Agents must follow the constitution in [.specify/memory/constitution.md](file://
 - **Compose Previews**: Provide stateless `@Preview` composables for all UI components. Never couple previews to ViewModels or databases. Wrap previews in the project theme.
 - **Unit Testing**: Run and pass `./gradlew test` for routine verification. Write fast JVM unit tests for all business logic.
 - **Integration Tests**: Never run integration tests in bulk. Always ask user permission before running full integration tests.
+- **Build Verification**: Do not run a build for every code change. Decide whether a build is necessary when you provision changes. Execute builds only when risk justifies compile time.

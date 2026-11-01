@@ -1,4 +1,4 @@
-package group.two.knockledge.ui.tabs
+package group.two.knockledge.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -37,6 +38,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -51,21 +53,14 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import group.two.knockledge.R
-import group.two.knockledge.ui.FunctionalWaveform
-import group.two.knockledge.ui.KnockRecordingController
-import group.two.knockledge.ui.KnockRecordingUiState
-import group.two.knockledge.ui.LiveTestController
-import group.two.knockledge.ui.LiveTestUiState
 import group.two.knockledge.ui.theme.AccentGold
 import group.two.knockledge.ui.theme.AntiqueBrass
 import group.two.knockledge.ui.theme.KnockledgeTheme
@@ -90,60 +85,78 @@ private data class SuctionParticle(
 )
 
 /**
- * Custom Canvas composable that draws a pixelated retro ring contour matching Figma mockup styling.
+ * Transparent top bar for [RecordScreen] displaying the session timer and compact Auto AI toggle.
  */
 @Composable
-fun PixelatedRing(
-    radius: Dp,
-    pixelSize: Dp,
-    color: Color,
+fun RecordTopBar(
+    bufferedSeconds: Int,
+    autoAiEnabled: Boolean,
+    onAutoAiChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Canvas(modifier = modifier) {
-        val centerX = size.width / 2f
-        val centerY = size.height / 2f
-        val radiusPx = radius.toPx()
-        val stepPx = pixelSize.toPx()
-        val steps = (2 * Math.PI * radiusPx / stepPx).toInt().coerceAtLeast(32)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(
+                R.string.recording_session_timer,
+                formatTimerSeconds(bufferedSeconds),
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = AccentGold,
+        )
 
-        for (i in 0 until steps) {
-            val angle = (2 * Math.PI * i / steps).toFloat()
-            val rawX = radiusPx * cos(angle)
-            val rawY = radiusPx * sin(angle)
-            val snappedX = (rawX / stepPx).toInt() * stepPx
-            val snappedY = (rawY / stepPx).toInt() * stepPx
-
-            drawRect(
-                color = color,
-                topLeft = Offset(centerX + snappedX - stepPx / 2f, centerY + snappedY - stepPx / 2f),
-                size = Size(stepPx, stepPx),
-            )
-        }
+        FilterChip(
+            selected = autoAiEnabled,
+            onClick = { onAutoAiChanged(!autoAiEnabled) },
+            label = {
+                Text(
+                    text = if (autoAiEnabled) "AI: ON" else "AI: OFF",
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            },
+            colors = FilterChipDefaults.filterChipColors(
+                containerColor = ObsidianMidnight,
+                labelColor = ParchmentCream,
+                selectedContainerColor = AccentGold,
+                selectedLabelColor = TextInk,
+            ),
+            border = FilterChipDefaults.filterChipBorder(
+                borderColor = AccentGold.copy(alpha = 0.5f),
+                selectedBorderColor = AntiqueBrass,
+                enabled = true,
+                selected = autoAiEnabled,
+            ),
+        )
     }
 }
 
 /**
- * Recording screen following Figma design (Knockledge UI - Frame "3 Recording")
+ * Recording screen following Figma design
  * with pixelated retro ring contour, central mic ring acting as the Capture trigger,
  * glowing ambient halo, black hole particle vortex suction animation, compact Auto AI toggle,
  * functional live sound wave, and stacked capture cards.
  */
 @Suppress("UNUSED_PARAMETER")
 @Composable
-fun RecordTab(
+fun RecordScreen(
     recordingUiState: KnockRecordingUiState,
-    liveTestUiState: LiveTestUiState,
+    hasRecordAudioPermission: Boolean,
     onStartSession: () -> Unit,
     onStopSession: () -> Unit,
     onManualSave: () -> Unit,
     onRequestPermission: () -> Unit,
+    onNavigateToHome: () -> Unit,
     modifier: Modifier = Modifier,
     autoAiEnabled: Boolean = true,
     onAutoAiChanged: (Boolean) -> Unit = {},
     onDurationChange: (Int) -> Unit = {},
     onSimulateKnock: () -> Unit = {},
-    onNavSettings: (() -> Unit)? = null,
-    onNavProfile: (() -> Unit)? = null,
 ) {
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
@@ -193,7 +206,6 @@ fun RecordTab(
         label = "glow_halo_alpha",
     )
 
-    // Tactile sinking / suction click physics
     val buttonPressScale by animateFloatAsState(
         targetValue = if (isSinking) 0.82f else 1.0f,
         animationSpec = if (isSinking) {
@@ -218,7 +230,6 @@ fun RecordTab(
             .fillMaxSize()
             .background(ObsidianMidnight),
     ) {
-        // Ambient background glow
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -233,55 +244,57 @@ fun RecordTab(
                 ),
         )
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            // Permission Banner
-            if (!liveTestUiState.hasRecordAudioPermission) {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = Color.Transparent,
+            topBar = {
+                RecordTopBar(
+                    bufferedSeconds = recordingUiState.bufferedSeconds,
+                    autoAiEnabled = autoAiEnabled,
+                    onAutoAiChanged = onAutoAiChanged,
+                )
+            },
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+
+                // Permission Banner
+                if (!hasRecordAudioPermission) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(
-                            text = stringResource(R.string.permission_required),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                        )
-                        Button(
-                            onClick = onRequestPermission,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error,
-                            ),
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Text(text = stringResource(R.string.grant_permission))
+                            Text(
+                                text = stringResource(R.string.permission_required),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                            )
+                            Button(
+                                onClick = onRequestPermission,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error,
+                                ),
+                            ) {
+                                Text(text = stringResource(R.string.grant_permission))
+                            }
                         }
                     }
                 }
-            }
 
-            // Session Header Timer
-            Text(
-                text = stringResource(
-                    R.string.recording_session_timer,
-                    formatTimerSeconds(recordingUiState.bufferedSeconds),
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = AccentGold,
-                textAlign = TextAlign.Center,
-            )
-
-            // Central Mic Ring Container + Glowing Halo & Black Hole Suction Vortex
+                // Central Mic Ring Container + Glowing Halo & Black Hole Suction Vortex
             Box(
                 modifier = Modifier
                     .size(240.dp)
@@ -405,7 +418,6 @@ fun RecordTab(
                 }
             }
 
-            // Status Texts
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -444,37 +456,11 @@ fun RecordTab(
                 )
             }
 
-            // Compact Auto AI Processing Quick Toggle
-            FilterChip(
-                selected = autoAiEnabled,
-                onClick = { onAutoAiChanged(!autoAiEnabled) },
-                label = {
-                    Text(
-                        text = if (autoAiEnabled) "Auto AI: ON" else "Auto AI: OFF",
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                },
-                colors = FilterChipDefaults.filterChipColors(
-                    containerColor = ObsidianMidnight,
-                    labelColor = ParchmentCream,
-                    selectedContainerColor = AccentGold,
-                    selectedLabelColor = TextInk,
-                ),
-                border = FilterChipDefaults.filterChipBorder(
-                    borderColor = AccentGold.copy(alpha = 0.5f),
-                    selectedBorderColor = AntiqueBrass,
-                    enabled = true,
-                    selected = autoAiEnabled,
-                ),
-            )
-
-            // Functional Sound Waveform Component
             FunctionalWaveform(
                 isRecording = recordingUiState.isRecording,
                 level = recordingUiState.level,
             )
 
-            // Hint Text
             Text(
                 text = stringResource(R.string.recording_hint_text),
                 style = MaterialTheme.typography.bodyMedium,
@@ -482,38 +468,46 @@ fun RecordTab(
                 textAlign = TextAlign.Center,
             )
 
-            // Stacked Capture Cards directly on layout (No outer container card)
             StackedCaptureDeck()
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Primary Session Control Button
-            Button(
-                onClick = if (recordingUiState.isRecording) onStopSession else onStartSession,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(4.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = AntiqueBrass,
-                    contentColor = TextInk,
-                ),
-            ) {
-                Text(
-                    text = if (recordingUiState.isRecording) {
-                        stringResource(R.string.stop_session)
-                    } else {
-                        stringResource(R.string.start_session)
-                    },
-                )
+            // Dedicated Stop Recording Button when recording, or Start Session button
+            if (recordingUiState.isRecording) {
+                Button(
+                    onClick = onStopSession,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(4.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ObsidianMidnight,
+                        contentColor = ParchmentCream,
+                    ),
+                    border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
+                        brush = Brush.horizontalGradient(listOf(AccentGold, AntiqueBrass)),
+                    ),
+                ) {
+                    Text(text = stringResource(R.string.stop_session))
+                }
+            } else {
+                Button(
+                    onClick = onStartSession,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(4.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AntiqueBrass,
+                        contentColor = TextInk,
+                    ),
+                ) {
+                    Text(text = stringResource(R.string.start_session))
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
+}
 
-/**
- * Individual capture row card following original Figma styling with spacious breathing room.
- */
 @Composable
 fun CaptureRowCard(
     title: String,
@@ -590,10 +584,6 @@ fun CaptureRowCard(
     }
 }
 
-/**
- * Stacked capture deck rendering recording cards directly with an overlaying effect
- * (front active card peeking over 1 previous card underneath) without an outer container card.
- */
 @Composable
 fun StackedCaptureDeck(
     modifier: Modifier = Modifier,
@@ -604,7 +594,6 @@ fun StackedCaptureDeck(
             .padding(bottom = 28.dp),
         contentAlignment = Alignment.TopCenter,
     ) {
-        // 1. Back Card (Previous recording peeking underneath)
         CaptureRowCard(
             title = "Cell Division",
             date = "OCT20 16:30",
@@ -612,11 +601,10 @@ fun StackedCaptureDeck(
             status = stringResource(R.string.processed_label),
             modifier = Modifier
                 .fillMaxWidth(0.94f)
-                .offset(y = 28.dp)
+                .offset(y = 34.dp)
                 .alpha(0.60f),
         )
 
-        // 2. Front Card (Most recent recording on top)
         CaptureRowCard(
             title = "Photosynthesis",
             date = "OCT21 12:04",
@@ -643,25 +631,25 @@ private fun formatBufferTime(seconds: Int): String {
 }
 
 /**
- * Convenience stateful overload for [RecordTab].
+ * Convenience stateful overload for [RecordScreen].
  */
 @Composable
-fun RecordTab(
+fun RecordScreen(
     recordingViewModel: KnockRecordingController,
-    liveTestController: LiveTestController,
+    hasRecordAudioPermission: Boolean,
     onRequestPermission: () -> Unit,
+    onNavigateToHome: () -> Unit,
     modifier: Modifier = Modifier,
     autoAiEnabled: Boolean = true,
     onAutoAiChanged: (Boolean) -> Unit = {},
 ) {
     val recordingUiState by recordingViewModel.uiState.collectAsState()
-    val liveTestUiState by liveTestController.uiState.collectAsState()
 
-    RecordTab(
+    RecordScreen(
         recordingUiState = recordingUiState,
-        liveTestUiState = liveTestUiState,
+        hasRecordAudioPermission = hasRecordAudioPermission,
         onStartSession = {
-            if (liveTestUiState.hasRecordAudioPermission) {
+            if (hasRecordAudioPermission) {
                 recordingViewModel.startSession()
             } else {
                 onRequestPermission()
@@ -670,36 +658,44 @@ fun RecordTab(
         onStopSession = recordingViewModel::stopSession,
         onManualSave = recordingViewModel::triggerManualSave,
         onRequestPermission = onRequestPermission,
+        onNavigateToHome = onNavigateToHome,
         modifier = modifier,
         autoAiEnabled = autoAiEnabled,
         onAutoAiChanged = onAutoAiChanged,
         onDurationChange = recordingViewModel::setBufferDurationSeconds,
-        onSimulateKnock = {
-            liveTestController.onKnockTriggered()
-            recordingViewModel.triggerManualSave()
-        },
+        onSimulateKnock = recordingViewModel::triggerManualSave,
     )
 }
 
 @Preview(showBackground = true)
 @Composable
-private fun RecordTabPreview() {
+private fun RecordScreenPreview() {
     KnockledgeTheme {
-        RecordTab(
+        RecordScreen(
             recordingUiState = KnockRecordingUiState(
                 isRecording = true,
                 bufferedSeconds = 222,
                 maxBufferSeconds = 300,
                 level = 0.65f,
             ),
-            liveTestUiState = LiveTestUiState(
-                hasRecordAudioPermission = true,
-                knockCount = 2,
-            ),
+            hasRecordAudioPermission = true,
             onStartSession = {},
             onStopSession = {},
             onManualSave = {},
             onRequestPermission = {},
+            onNavigateToHome = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0D0E15)
+@Composable
+private fun RecordTopBarPreview() {
+    KnockledgeTheme {
+        RecordTopBar(
+            bufferedSeconds = 222,
+            autoAiEnabled = true,
+            onAutoAiChanged = {},
         )
     }
 }

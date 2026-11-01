@@ -60,7 +60,7 @@ fun FunctionalWaveform(
         }
     }
 
-    val maxBarHeight = 150.dp
+    val maxBarHeight = 180.dp
     val minBarHeight = 4.dp
 
     val infiniteTransition = rememberInfiniteTransition(label = "waveform_phase")
