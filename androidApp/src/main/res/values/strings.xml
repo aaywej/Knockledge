@@ -24,6 +24,21 @@
     <string name="start_session">Start Session</string>
     <string name="stop_session">Stop Session</string>
     <string name="save_snapshot">Save Snapshot Now</string>
+    <string name="recording_session_timer">SESSION %1$s</string>
+    <string name="recording_status_active">Listening · cache active</string>
+    <string name="recording_status_inactive">Session inactive · tap Start</string>
+    <string name="recording_buffer_status">%1$s buffered / %2$s max</string>
+    <string name="recording_gesture_status_active">Double-knock detection · Active</string>
+    <string name="recording_gesture_status_inactive">Double-knock detection · Inactive</string>
+    <string name="recording_hint_text">Time is slipping. Knock to keep it.</string>
+    <string name="recent_captures_title">Recent captures</string>
+    <string name="buffer_window_selector_title">BUFFER WINDOW · 1–5 MINUTES</string>
+    <string name="capture_button_label">Capture</string>
+    <string name="nav_back_label">&lt; Back</string>
+    <string name="nav_settings_label">Settings</string>
+    <string name="nav_profile_label">Profile</string>
+    <string name="unprocessed_label">Unprocessed</string>
+    <string name="processed_label">Processed</string>
 
     <!-- Notes Tab / Audio Playback -->
     <string name="notes_tab_title">Captured Notes &amp; AI Inspection</string>

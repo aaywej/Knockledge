@@ -30,6 +30,7 @@ class KnockRecordingViewModel(
                 isGestureActive = rec.isGestureActive,
                 isSavingSnapshot = rec.pendingRewinds > 0,
                 lastSaveSuccess = saved,
+                level = rec.level,
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, KnockRecordingUiState())
 

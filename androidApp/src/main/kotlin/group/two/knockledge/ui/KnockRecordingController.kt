@@ -12,6 +12,7 @@ data class KnockRecordingUiState(
     val isGestureActive: Boolean = false,
     val isSavingSnapshot: Boolean = false,
     val lastSaveSuccess: Boolean? = null,
+    val level: Float = 0f,
 )
 
 /**

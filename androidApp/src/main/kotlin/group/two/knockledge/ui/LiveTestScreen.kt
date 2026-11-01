@@ -208,6 +208,8 @@ fun LiveTestAppShell(
                     recordingViewModel = recordingViewModel,
                     liveTestController = liveTestController,
                     onRequestPermission = onRequestPermission,
+                    autoAiEnabled = autoAiEnabled,
+                    onAutoAiChanged = appSettings::setAutoAiProcessingEnabled,
                 )
             },
             notesTabContent = {
