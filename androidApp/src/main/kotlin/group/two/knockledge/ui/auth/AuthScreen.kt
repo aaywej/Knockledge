@@ -8,6 +8,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +33,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,8 +73,8 @@ import group.two.knockledge.ui.theme.SurfaceIndigo
 import group.two.knockledge.ui.theme.TextInk
 
 /**
- * Sign-in / registration screen adhering to the Obsidian & Brass terminal aesthetic
- * enhanced with Material 3 design principles.
+ * Main authentication screen exposing both Sign-In and Registration flows
+ * with tab selection and mode switching.
  */
 @Composable
 fun AuthScreen(
@@ -82,8 +84,9 @@ fun AuthScreen(
     onRegister: (name: String, email: String, password: String) -> Unit,
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
+    initialRegistering: Boolean = false,
 ) {
-    var registering by remember { mutableStateOf(false) }
+    var registering by remember { mutableStateOf(initialRegistering) }
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -153,6 +156,7 @@ fun AuthScreen(
                     .height(56.dp),
             ) {
                 if (onBack != null) {
+                    val backCd = stringResource(R.string.auth_back_cd)
                     IconButton(
                         onClick = onBack,
                         enabled = !state.busy,
@@ -160,7 +164,8 @@ fun AuthScreen(
                             .size(48.dp)
                             .align(Alignment.CenterStart)
                             .border(1.dp, OutlineVariant, buttonShape)
-                            .background(SurfaceContainer, buttonShape),
+                            .background(SurfaceContainer, buttonShape)
+                            .semantics { contentDescription = backCd },
                     ) {
                         BackArrowIcon(tint = ParchmentCream)
                     }
@@ -182,13 +187,66 @@ fun AuthScreen(
                 )
             }
 
+            // Mode Toggle Segmented Control (Sign In / Create Account)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
+                    .background(SurfaceIndigo, buttonShape)
+                    .border(1.dp, AntiqueBrass.copy(alpha = 0.4f), buttonShape)
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize()
+                        .background(
+                            if (!registering) AntiqueBrass else Color.Transparent,
+                            buttonShape,
+                        )
+                        .clickable(enabled = !state.busy) {
+                            focusManager.clearFocus()
+                            registering = false
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(R.string.auth_sign_in_title),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (!registering) TextInk else ParchmentCream,
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize()
+                        .background(
+                            if (registering) AntiqueBrass else Color.Transparent,
+                            buttonShape,
+                        )
+                        .clickable(enabled = !state.busy) {
+                            focusManager.clearFocus()
+                            registering = true
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(R.string.auth_register_title),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (registering) TextInk else ParchmentCream,
+                    )
+                }
+            }
+
             // Subtitle Description
             Text(
                 text = stringResource(
                     if (registering) R.string.auth_register_subtitle else R.string.auth_sign_in_subtitle
                 ),
                 style = MaterialTheme.typography.bodyMedium,
-                color = AccentGold,
+                color = MutedSand,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -307,7 +365,6 @@ fun AuthScreen(
                     )
                 }
 
-
                 // Error Notice
                 if (errorMessage != null) {
                     Text(
@@ -371,7 +428,7 @@ fun AuthScreen(
                     )
                 }
 
-                // Google Sign In Action Below Form
+                // Google Action Button
                 OutlinedButton(
                     onClick = {
                         focusManager.clearFocus()
@@ -396,7 +453,9 @@ fun AuthScreen(
                     ) {
                         GoogleLogoIcon()
                         Text(
-                            text = stringResource(R.string.auth_sign_in_with_google),
+                            text = stringResource(
+                                if (registering) R.string.auth_continue_with_google else R.string.auth_sign_in_with_google
+                            ),
                             style = MaterialTheme.typography.labelLarge,
                         )
                     }
@@ -405,7 +464,7 @@ fun AuthScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Registration / Sign In Mode Switch
+            // Mode Switcher Prompt
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -421,24 +480,16 @@ fun AuthScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                OutlinedButton(
+                TextButton(
                     onClick = { registering = !registering },
                     enabled = !state.busy,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = buttonShape,
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = SurfaceContainer,
-                        contentColor = ParchmentCream,
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, AntiqueBrass),
                 ) {
                     Text(
                         text = stringResource(
                             if (registering) R.string.auth_sign_in_button else R.string.auth_create_account_button
                         ),
                         style = MaterialTheme.typography.labelLarge,
+                        color = ParchmentCream,
                     )
                 }
             }
@@ -547,7 +598,12 @@ private fun PasswordEyeIcon(
 private fun GoogleLogoIcon(
     modifier: Modifier = Modifier,
 ) {
-    Canvas(modifier = modifier.size(18.dp)) {
+    val googleCd = stringResource(R.string.auth_google_logo_cd)
+    Canvas(
+        modifier = modifier
+            .size(18.dp)
+            .semantics { contentDescription = googleCd },
+    ) {
         val w = size.width
         val h = size.height
         val strokeWidth = w * 0.22f
@@ -599,15 +655,15 @@ private fun GoogleLogoIcon(
         drawLine(
             color = Color(0xFF4285F4),
             start = Offset(center.x, center.y),
-            end = Offset(w - strokeWidth / 2f, center.y),
+            end = Offset(w - (strokeWidth / 2f), center.y),
             strokeWidth = strokeWidth,
         )
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Sign In Mode")
 @Composable
-fun AuthScreenPreview() {
+fun AuthScreenSignInPreview() {
     KnockledgeTheme {
         AuthScreen(
             state = AuthState(error = "Enter a valid email address"),
@@ -615,6 +671,22 @@ fun AuthScreenPreview() {
             onSignIn = { _, _ -> },
             onRegister = { _, _, _ -> },
             onBack = null,
+            initialRegistering = false,
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Create Account Mode")
+@Composable
+fun AuthScreenRegistrationPreview() {
+    KnockledgeTheme {
+        AuthScreen(
+            state = AuthState(),
+            onGoogle = {},
+            onSignIn = { _, _ -> },
+            onRegister = { _, _, _ -> },
+            onBack = null,
+            initialRegistering = true,
         )
     }
 }

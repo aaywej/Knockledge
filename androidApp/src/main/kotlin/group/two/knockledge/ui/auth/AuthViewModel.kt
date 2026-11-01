@@ -38,7 +38,9 @@ class AuthViewModel(
     }
 
     /** Signs in with a Google ID token produced by [googleToken]. */
-    fun signInWithGoogle() = run { runCatching { googleToken() }.fold({ repo.signInWithGoogle(it) }, { Result.failure(it) }) }
+    fun signInWithGoogle() = run {
+        runCatching { googleToken() }.fold({ repo.signInWithGoogle(it) }) { Result.failure(it) }
+    }
 
     /** Signs in with email and password. */
     fun signInWithEmail(email: String, password: String) = run { repo.signInWithEmail(email, password) }

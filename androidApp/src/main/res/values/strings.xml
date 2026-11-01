@@ -55,6 +55,7 @@
     <string name="auth_register_title">Create account</string>
     <string name="auth_register_subtitle">Create a Knockledge account to sync your audio anchors across devices.</string>
     <string name="auth_sign_in_with_google">Sign in with Google</string>
+    <string name="auth_continue_with_google">Continue with Google</string>
     <string name="auth_or_with_email">OR WITH EMAIL</string>
     <string name="auth_or_with_google">OR WITH GOOGLE</string>
     <string name="auth_email_label">Email</string>
