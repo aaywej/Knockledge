@@ -33,3 +33,4 @@ plugins {
 }
 
 include(":androidApp")
+include(":sensor")

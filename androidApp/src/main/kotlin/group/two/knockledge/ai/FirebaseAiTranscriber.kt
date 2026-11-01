@@ -6,18 +6,24 @@ import com.google.firebase.ai.type.GenerativeBackend
 import com.google.firebase.ai.type.Schema
 import com.google.firebase.ai.type.content
 import com.google.firebase.ai.type.generationConfig
+import group.two.knockledge.data.model.ChapterMarker
 import group.two.knockledge.pipeline.AudioSegment
 import group.two.knockledge.pipeline.TranscriptResult
 import group.two.knockledge.pipeline.TranscriptSentence
 import group.two.knockledge.pipeline.TranscriptionEngine
 import group.two.knockledge.pipeline.TranscriptionEngineType
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
+/** One request to Gemini: a WAV clip plus a text prompt, answered with raw response text. */
 interface GeminiClient {
+    /** Returns the model's reply for [wav] under [prompt]; implementations may throw on failure. */
     suspend fun generate(wav: ByteArray, prompt: String): String
 }
 
+/** Firebase AI Logic client that asks Gemini for a JSON transcript with speaker turns and chapters. */
 class FirebaseGeminiClient : GeminiClient {
     private val model by lazy {
         Firebase.ai(backend = GenerativeBackend.googleAI()).generativeModel(
@@ -39,48 +45,88 @@ class FirebaseGeminiClient : GeminiClient {
                                 optionalProperties = listOf("confidence"),
                             )
                         ),
-                    )
+                        "chapters" to Schema.array(
+                            Schema.obj(
+                                mapOf(
+                                    "startTimeMs" to Schema.long(),
+                                    "title" to Schema.string(),
+                                    "keyBullets" to Schema.array(Schema.string()),
+                                ),
+                                optionalProperties = listOf("keyBullets"),
+                            )
+                        ),
+                    ),
+                    optionalProperties = listOf("chapters"),
                 )
             },
         )
     }
 
+    /** Returns the JSON reply text; throws [IllegalStateException] when Gemini sends nothing. */
     override suspend fun generate(wav: ByteArray, prompt: String): String =
         model.generateContent(content { inlineData(wav, "audio/wav"); text(prompt) }).text
             ?: error("empty Gemini response")
 
     companion object {
-        const val MODEL_ID = "gemini-3.5-flash"
+        const val MODEL_ID = "gemini-3.5-flash-lite"
     }
 }
 
-class FirebaseAiTranscriber(private val client: GeminiClient) : TranscriptionEngine {
+@Serializable
+private data class GeminiResponse(
+    val detectedLanguage: String,
+    val sentences: List<GeminiSentence>,
+    val chapters: List<GeminiChapter> = emptyList(),
+)
+
+@Serializable
+private data class GeminiSentence(
+    val speaker: String,
+    val startTimeMs: Long,
+    val endTimeMs: Long,
+    val text: String,
+    val confidence: Float = 1.0f,
+)
+
+@Serializable
+private data class GeminiChapter(
+    val startTimeMs: Long,
+    val title: String,
+    val keyBullets: List<String> = emptyList(),
+)
+
+/** Cloud transcription: uploads each segment to Gemini and maps its JSON reply to [TranscriptResult]. */
+class FirebaseAiTranscriber(
+    private val client: GeminiClient,
+    private val prompt: String = PROMPT,
+) : TranscriptionEngine {
     override val engineType = TranscriptionEngineType.CLOUD_FIREBASE_AI
 
-    override suspend fun process(segment: AudioSegment): TranscriptResult =
-        parse(client.generate(wav(segment.pcm, segment.sampleRate), PROMPT))
+    private val json = Json { ignoreUnknownKeys = true }
 
-    private fun parse(json: String): TranscriptResult {
-        val root = MiniJson(json).value() as Map<*, *>
-        val sentences = (root["sentences"] as List<*>).map {
-            it as Map<*, *>
-            TranscriptSentence(
-                speaker = it["speaker"] as String,
-                startTimeMs = (it["startTimeMs"] as Number).toLong(),
-                endTimeMs = (it["endTimeMs"] as Number).toLong(),
-                text = it["text"] as String,
-                confidence = (it["confidence"] as Number?)?.toFloat() ?: 1.0f,
-            )
+    /** Sends [segment] as a WAV plus the transcription prompt; throws if the reply cannot be parsed. */
+    override suspend fun process(segment: AudioSegment): TranscriptResult =
+        parse(client.generate(wav(segment.pcm, segment.sampleRate), prompt))
+
+    private fun parse(raw: String): TranscriptResult {
+        val root = json.decodeFromString<GeminiResponse>(raw)
+        val sentences = root.sentences.map {
+            TranscriptSentence(it.speaker, it.startTimeMs, it.endTimeMs, it.text, it.confidence)
+        }
+        val chapters = root.chapters.map {
+            ChapterMarker(it.startTimeMs, it.title, it.keyBullets)
         }
         return TranscriptResult(
             sentences = sentences,
             fullText = sentences.joinToString(" ") { it.text },
             isDiarized = sentences.map { it.speaker }.distinct().size > 1,
-            detectedLanguage = root["detectedLanguage"] as String,
+            detectedLanguage = root.detectedLanguage,
             engineType = engineType,
+            chapters = chapters,
         )
     }
 
+    /** Wraps mono 16-bit [pcm] in a 44-byte RIFF/WAVE header, which is the shape Gemini accepts. */
     private fun wav(pcm: ShortArray, rate: Int): ByteArray {
         val data = pcm.size * 2
         val b = ByteBuffer.allocate(44 + data).order(ByteOrder.LITTLE_ENDIAN)
@@ -91,83 +137,9 @@ class FirebaseAiTranscriber(private val client: GeminiClient) : TranscriptionEng
         return b.array()
     }
 
-    private companion object {
+    companion object {
         const val PROMPT = "Transcribe this audio verbatim. The language may be English, Filipino or Taglish. " +
-            "Separate speaker turns as Speaker 1, Speaker 2, and so on, with millisecond start and end times."
+            "Separate speaker turns as Speaker 1, Speaker 2, and so on, with millisecond start and end times. " +
+            "Also divide the speech into timestamped chapters with titles and key bullet points."
     }
-}
-
-private class MiniJson(private val s: String) {
-    private var i = 0
-
-    fun value(): Any? {
-        ws()
-        return when (val c = s[i]) {
-            '{' -> {
-                i++
-                val m = LinkedHashMap<String, Any?>()
-                ws()
-                if (s[i] == '}') i++ else do {
-                    ws()
-                    val k = string()
-                    ws(); expect(':')
-                    m[k] = value()
-                    ws()
-                } while (s[i++] == ',')
-                m
-            }
-            '[' -> {
-                i++
-                val l = ArrayList<Any?>()
-                ws()
-                if (s[i] == ']') i++ else do {
-                    l += value()
-                    ws()
-                } while (s[i++] == ',')
-                l
-            }
-            '"' -> string()
-            't' -> lit("true", true)
-            'f' -> lit("false", false)
-            'n' -> lit("null", null)
-            else -> {
-                require(c == '-' || c.isDigit()) { "bad json at $i" }
-                val st = i
-                while (i < s.length && (s[i].isDigit() || s[i] in "+-.eE")) i++
-                s.substring(st, i).toDouble()
-            }
-        }
-    }
-
-    private fun string(): String {
-        expect('"')
-        val sb = StringBuilder()
-        while (s[i] != '"') {
-            var c = s[i++]
-            if (c == '\\') {
-                c = s[i++]
-                when (c) {
-                    'n' -> sb.append('\n')
-                    't' -> sb.append('\t')
-                    'r' -> sb.append('\r')
-                    'b' -> sb.append('\b')
-                    'f' -> sb.append('\u000C')
-                    'u' -> { sb.append(s.substring(i, i + 4).toInt(16).toChar()); i += 4 }
-                    else -> sb.append(c)
-                }
-            } else sb.append(c)
-        }
-        i++
-        return sb.toString()
-    }
-
-    private fun lit(word: String, v: Any?): Any? {
-        require(s.startsWith(word, i)) { "bad json at $i" }
-        i += word.length
-        return v
-    }
-
-    private fun expect(c: Char) = require(s[i++] == c) { "bad json at ${i - 1}" }
-
-    private fun ws() { while (i < s.length && s[i].isWhitespace()) i++ }
 }

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Session notification layout -->
+    <dimen name="notification_badge_corner_radius">12dp</dimen>
+    <dimen name="notification_badge_padding_horizontal">8dp</dimen>
+    <dimen name="notification_badge_padding_vertical">2dp</dimen>
+    <dimen name="notification_badge_text_size">12sp</dimen>
+    <dimen name="notification_title_text_size">14sp</dimen>
+    <dimen name="notification_status_text_size">13sp</dimen>
+    <dimen name="notification_chronometer_text_size">24sp</dimen>
+    <dimen name="notification_caption_text_size">12sp</dimen>
+    <dimen name="notification_cache_dot_size">6dp</dimen>
+    <dimen name="notification_cache_dot_margin_end">4dp</dimen>
+    <dimen name="notification_action_button_size">40dp</dimen>
+    <dimen name="notification_row_spacing">8dp</dimen>
+    <dimen name="notification_row_spacing_large">12dp</dimen>
+    <dimen name="notification_padding_vertical">8dp</dimen>
+</resources>

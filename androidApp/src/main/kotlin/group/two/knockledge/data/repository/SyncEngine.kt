@@ -10,10 +10,14 @@ import group.two.knockledge.data.model.SyncTaskType
 import group.two.knockledge.data.remote.AudioUploads
 import group.two.knockledge.data.remote.NoteSyncSource
 import group.two.knockledge.data.remote.toFirestoreDocument
-import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import java.io.File
 
+/**
+ * Replays queued sync work for one user. Entries run one at a time; a failing entry is retried with
+ * exponential backoff until it succeeds or reaches [maxAttempts].
+ */
 class SyncEngine(
     private val notes: NoteDao,
     private val queue: SyncQueueDao,
@@ -24,10 +28,12 @@ class SyncEngine(
     private val maxAttempts: Int = 4,
     private val backoffBaseMs: Long = 1_000L,
 ) {
+    /** Processes every entry for [userId] that is not already in progress, one after another. */
     suspend fun syncUser(userId: String) {
         queue.pending(userId).forEach { process(it) }
     }
 
+    /** Retries [item] until it succeeds or hits [maxAttempts], then marks the note SYNC_FAILED. */
     private suspend fun process(item: SyncQueueEntity) {
         queue.insert(item.copy(status = QueueStatus.PROCESSING, updatedAtEpochMs = now()))
         var attempts = item.retryCount
@@ -58,6 +64,7 @@ class SyncEngine(
         }
     }
 
+    /** Uploads the audio first when it is missing; the note only counts as SYNCED once it has a remote URL. */
     private suspend fun execute(item: SyncQueueEntity) {
         val entity = notes.getNote(item.noteId, item.userId) ?: return
         when (item.taskType) {

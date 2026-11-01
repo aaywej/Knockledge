@@ -52,7 +52,7 @@ description: "Task list for Unit 3 — Transcription & Diarization implementatio
 
 - [x] T006 [US1] Implement `FirebaseAiTranscriber` using Firebase AI (Gemini 1.5 Flash) with audio blob payload and structured JSON output in `androidApp/src/main/kotlin/group/two/knockledge/ai/FirebaseAiTranscriber.kt`
 - [x] T007 [US1] Implement `CompositeTranscriber` with 10-second timeout and immediate fallback routing in `androidApp/src/main/kotlin/group/two/knockledge/pipeline/CompositeTranscriber.kt`
-- [x] T008 [US1] Register `Transcriber` binding in Dagger dependency injection graph in `androidApp/src/main/kotlin/group/two/knockledge/di/RewinderComponent.kt`
+- [x] T008 [US1] Register `Transcriber` binding in Dagger dependency injection graph in `androidApp/src/main/kotlin/group/two/knockledge/di/KnockledgeComponent.kt`
 
 **Checkpoint**: User Story 1 fully functional and independently testable as MVP.
 

@@ -1,13 +1,16 @@
 package group.two.knockledge.pipeline
 
 import group.two.knockledge.core.formatDuration
+import group.two.knockledge.data.model.ChapterMarker
 import group.two.knockledge.settings.SummaryLanguages
 
 /** Local LLM. Input is the filtered transcript, output is the only thing a user ever sees. */
 interface Summarizer {
+    /** Turns a filtered transcript into the recap the user reads. */
     suspend fun summarize(request: SummaryRequest): Summary
 }
 
+/** Everything the summarizer needs that is not the transcript text itself. */
 data class SummaryRequest(
     val filteredTranscript: String,
     val looksLikeConversation: Boolean,
@@ -15,49 +18,86 @@ data class SummaryRequest(
     val durationMillis: Long,
 )
 
+/** A rewind card: short title, one-line gist, and a few key points. */
 data class Summary(
     val title: String,
     val gist: String,
     val points: List<String>,
     val redactedCount: Int,
+    val chapters: List<ChapterMarker> = emptyList(),
 )
 
 /** What the pipeline is doing right now, for the UI. */
-enum class RewindStage { Transcribing, Summarizing }
+enum class RewindStage {
+    /** Audio conditioning: dead air eradication and normalization. */
+    Preprocessing,
+
+    /** Speech recognition transcribing audio to text. */
+    Transcribing,
+
+    /** Large language model distilling the transcript into a summary. */
+    Summarizing,
+}
+
+/** Terminal result of running the rewind pipeline. */
+sealed interface PipelineResult {
+    /** Pipeline executed successfully and produced a summary and transcript. */
+    data class Success(
+        val summary: Summary,
+        val transcript: TranscriptResult,
+    ) : PipelineResult
+
+    /** Pipeline aborted because remaining speech fell below the minimum viable threshold. */
+    data class InsufficientSpeech(
+        val detectedSpeechMillis: Long,
+        val message: String = "No speech detected in recorded audio.",
+    ) : PipelineResult
+}
 
 /**
- * transcribe -> filter -> summarize. The PCM array is zero-filled as soon as the
- * transcriber is done with it, success or not.
+ * preprocess -> transcribe -> summarize. The pre-processed PCM array is zero-filled
+ * as soon as the transcriber is done with it, success or not.
  */
 class RewindPipeline(
     private val transcriber: Transcriber,
-    private val filter: SensitiveFilter,
     private val summarizer: Summarizer,
+    private val preprocessor: AudioPreprocessor,
 ) {
+    /**
+     * Runs the full pipeline once. [onStage] reports progress.
+     * Returns [PipelineResult.InsufficientSpeech] when the audio holds under 1.0s of speech.
+     */
     suspend fun run(
         pcm: ShortArray,
         sampleRate: Int,
         durationMillis: Long,
         onStage: (RewindStage) -> Unit = {},
         onTranscript: (TranscriptResult) -> Unit = {},
-    ): Summary {
-        onStage(RewindStage.Transcribing)
-        val transcript = try {
-            transcriber.transcribe(pcm, sampleRate)
-        } finally {
-            pcm.fill(0)
+    ): PipelineResult {
+        onStage(RewindStage.Preprocessing)
+        when (val processed = preprocessor.process(pcm, sampleRate)) {
+            is AudioPreprocessResult.InsufficientSpeech ->
+                return PipelineResult.InsufficientSpeech(processed.detectedSpeechMillis)
+            is AudioPreprocessResult.Success -> {
+                onStage(RewindStage.Transcribing)
+                val transcript = try {
+                    transcriber.transcribe(processed.pcm, sampleRate)
+                } finally {
+                    processed.pcm.fill(0)
+                }
+                onTranscript(transcript)
+                onStage(RewindStage.Summarizing)
+                val summary = summarizer.summarize(
+                    SummaryRequest(
+                        filteredTranscript = labeled(transcript),
+                        looksLikeConversation = transcript.isDiarized,
+                        redactedCount = 0,
+                        durationMillis = durationMillis,
+                    )
+                )
+                return PipelineResult.Success(summary, transcript)
+            }
         }
-        onTranscript(transcript)
-        val filtered = filter.filter(labeled(transcript))
-        onStage(RewindStage.Summarizing)
-        return summarizer.summarize(
-            SummaryRequest(
-                filteredTranscript = filtered.text,
-                looksLikeConversation = transcript.isDiarized,
-                redactedCount = filtered.redactedCount,
-                durationMillis = durationMillis,
-            )
-        )
     }
 
     private fun labeled(t: TranscriptResult): String =
@@ -68,7 +108,22 @@ class RewindPipeline(
  * System prompt for the on-device summarizer, kept here so Android and iOS ship
  * the same behavior.
  */
-object SummarizerPrompt {
+object SummarizerPrompt : PromptProvider {
+    override val geminiTranscribePrompt: String =
+        "Transcribe this audio verbatim. The language may be English, Filipino or Taglish. " +
+            "Separate speaker turns as Speaker 1, Speaker 2, and so on, with millisecond start and end times. " +
+            "Also divide the speech into timestamped chapters with titles and key bullet points."
+
+    override val taglishPrompt: String = TranscriptionHints.TAGLISH_PROMPT
+
+    override fun summarizerSystem(outputLanguage: String): String = system(outputLanguage)
+
+    override fun summarizerUser(
+        request: SummaryRequest,
+        maxChars: Int,
+        outputLanguage: String,
+    ): String = user(request, maxChars, outputLanguage)
+
     /** Keeps prompt + answer inside a 4096 token context, even for dense Filipino speech. */
     const val MAX_TRANSCRIPT_CHARS: Int = 8_000
 
@@ -105,6 +160,7 @@ object SummarizerPrompt {
     /** Apple's on-device model has a 4096 token window for input and output together. */
     const val APPLE_MAX_TRANSCRIPT_CHARS: Int = 5_000
 
+    /** User prompt carrying the clipped transcript and the language instruction. */
     fun user(
         request: SummaryRequest,
         maxChars: Int = MAX_TRANSCRIPT_CHARS,

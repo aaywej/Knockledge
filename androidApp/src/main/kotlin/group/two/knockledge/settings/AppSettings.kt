@@ -7,14 +7,21 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /** Tiny persistent key-value store. Android: SharedPreferences. iOS: NSUserDefaults. */
 interface KeyValueStore {
+    /** Returns the stored value, or null when the key is absent. */
     fun getString(key: String): String?
+
+    /** Stores the value, or removes the key when [value] is null. */
     fun putString(key: String, value: String?)
 }
 
 /** In-memory store for previews and tests. */
 class MemoryStore : KeyValueStore {
     private val map = mutableMapOf<String, String>()
+
+    /** Returns the stored value, or null when the key is absent. */
     override fun getString(key: String): String? = map[key]
+
+    /** Stores the value, or removes the key when [value] is null. */
     override fun putString(key: String, value: String?) {
         if (value == null) map.remove(key) else map[key] = value
     }
@@ -35,7 +42,7 @@ object SummaryLanguages {
     const val ENGLISH = "en"
 }
 
-/** What Rewinder listens to. */
+/** What Knockledge listens to. */
 object InputSources {
     const val MIC = "mic"
 
@@ -75,39 +82,127 @@ class AppSettings(
     )
     val bufferDurationSeconds: StateFlow<Int> = _bufferDurationSeconds.asStateFlow()
 
+    private val _minAudioSaveSeconds = MutableStateFlow(
+        store.getString(KEY_MIN_AUDIO_SAVE)?.toIntOrNull()?.coerceIn(MIN_AUDIO_SAVE_MIN, MIN_AUDIO_SAVE_MAX)
+            ?: DEFAULT_MIN_AUDIO_SAVE_SECONDS,
+    )
+    val minAudioSaveSeconds: StateFlow<Int> = _minAudioSaveSeconds.asStateFlow()
+
+    private val _knockSensorThreshold = MutableStateFlow(
+        store.getString(KEY_KNOCK_THRESHOLD)?.toFloatOrNull() ?: DEFAULT_KNOCK_THRESHOLD,
+    )
+    val knockSensorThreshold: StateFlow<Float> = _knockSensorThreshold.asStateFlow()
+
+    private val _transcriptionMode = MutableStateFlow(store.getString(KEY_TRANSCRIPTION_MODE) ?: MODE_AUTO)
+    val transcriptionMode: StateFlow<String> = _transcriptionMode.asStateFlow()
+
+    private val _transcriptionLocalModel = MutableStateFlow(
+        store.getString(KEY_TRANSCRIPTION_LOCAL_MODEL) ?: DEFAULT_TRANSCRIPTION_LOCAL_MODEL,
+    )
+    val transcriptionLocalModel: StateFlow<String> = _transcriptionLocalModel.asStateFlow()
+
+    private val _comprehensionMode = MutableStateFlow(store.getString(KEY_COMPREHENSION_MODE) ?: MODE_AUTO)
+    val comprehensionMode: StateFlow<String> = _comprehensionMode.asStateFlow()
+
+    private val _autoAiProcessingEnabled = MutableStateFlow(
+        store.getString(KEY_AUTO_AI_PROCESSING)?.toBooleanStrictOrNull() ?: false,
+    )
+    val autoAiProcessingEnabled: StateFlow<Boolean> = _autoAiProcessingEnabled.asStateFlow()
+
+    /** Clamps [seconds] into [RewindPolicy]'s supported window, then persists and publishes it. */
     fun setBufferDurationSeconds(seconds: Int) {
         val clamped = RewindPolicy.clampWindowSeconds(seconds)
         store.putString(KEY_BUFFER, clamped.toString())
         _bufferDurationSeconds.value = clamped
     }
 
+    /** Stores [id] and publishes it to [summaryModel]. */
     fun setSummaryModel(id: String) {
         store.putString(KEY_SUMMARY, id)
         _summaryModel.value = id
     }
 
+    /** Stores [id] and publishes it to [language]. */
     fun setLanguage(id: String) {
         store.putString(KEY_LANGUAGE, id)
         _language.value = id
     }
 
+    /** Stores [id] and publishes it to [summaryLanguage]. */
     fun setSummaryLanguage(id: String) {
         store.putString(KEY_SUMMARY_LANGUAGE, id)
         _summaryLanguage.value = id
     }
 
+    /** Stores [id] and publishes it to [inputSource]. */
     fun setInputSource(id: String) {
         store.putString(KEY_INPUT, id)
         _inputSource.value = id
     }
 
-    private companion object {
-        const val KEY_VERSION = "settings_version"
-        const val KEY_SUMMARY = "summary_model"
-        const val KEY_LANGUAGE = "transcription_language"
-        const val KEY_SUMMARY_LANGUAGE = "summary_language"
-        const val KEY_INPUT = "input_source"
-        const val KEY_BUFFER = "buffer_duration_seconds"
+    /** Clamps [seconds] into the supported save range, then persists and publishes it. */
+    fun setMinAudioSaveSeconds(seconds: Int) {
+        val clamped = seconds.coerceIn(MIN_AUDIO_SAVE_MIN, MIN_AUDIO_SAVE_MAX)
+        store.putString(KEY_MIN_AUDIO_SAVE, clamped.toString())
+        _minAudioSaveSeconds.value = clamped
+    }
+
+    /** Stores [threshold] and publishes it to [knockSensorThreshold]. */
+    fun setKnockSensorThreshold(threshold: Float) {
+        store.putString(KEY_KNOCK_THRESHOLD, threshold.toString())
+        _knockSensorThreshold.value = threshold
+    }
+
+    /** Stores [mode] and publishes it to [transcriptionMode]. */
+    fun setTranscriptionMode(mode: String) {
+        store.putString(KEY_TRANSCRIPTION_MODE, mode)
+        _transcriptionMode.value = mode
+    }
+
+    /** Stores [modelId] and publishes it to [transcriptionLocalModel]. */
+    fun setTranscriptionLocalModel(modelId: String) {
+        store.putString(KEY_TRANSCRIPTION_LOCAL_MODEL, modelId)
+        _transcriptionLocalModel.value = modelId
+    }
+
+    /** Stores [mode] and publishes it to [comprehensionMode]. */
+    fun setComprehensionMode(mode: String) {
+        store.putString(KEY_COMPREHENSION_MODE, mode)
+        _comprehensionMode.value = mode
+    }
+
+    /** Stores [enabled] and publishes it to [autoAiProcessingEnabled]. */
+    fun setAutoAiProcessingEnabled(enabled: Boolean) {
+        store.putString(KEY_AUTO_AI_PROCESSING, enabled.toString())
+        _autoAiProcessingEnabled.value = enabled
+    }
+
+    companion object {
+        /** Pick online or local automatically based on connectivity. */
+        const val MODE_AUTO = "auto"
+        /** Always use the cloud engine; fails when offline. */
+        const val MODE_ONLINE = "online"
+        /** Always use the on-device engine. */
+        const val MODE_LOCAL = "local"
+
+        const val DEFAULT_MIN_AUDIO_SAVE_SECONDS = 5
+        const val MIN_AUDIO_SAVE_MIN = 5
+        const val MIN_AUDIO_SAVE_MAX = 60
+        const val DEFAULT_KNOCK_THRESHOLD = 6.0f
+        const val DEFAULT_TRANSCRIPTION_LOCAL_MODEL = "whisper"
+
+        private const val KEY_VERSION = "settings_version"
+        private const val KEY_SUMMARY = "summary_model"
+        private const val KEY_LANGUAGE = "transcription_language"
+        private const val KEY_SUMMARY_LANGUAGE = "summary_language"
+        private const val KEY_INPUT = "input_source"
+        private const val KEY_BUFFER = "buffer_duration_seconds"
+        private const val KEY_MIN_AUDIO_SAVE = "min_audio_save_seconds"
+        private const val KEY_KNOCK_THRESHOLD = "knock_sensor_threshold"
+        private const val KEY_TRANSCRIPTION_MODE = "transcription_mode"
+        private const val KEY_TRANSCRIPTION_LOCAL_MODEL = "transcription_local_model"
+        private const val KEY_COMPREHENSION_MODE = "comprehension_mode"
+        private const val KEY_AUTO_AI_PROCESSING = "auto_ai_processing_enabled"
     }
 }
 

@@ -11,4 +11,10 @@
     <color name="knock_glitch_pink">#FF3D9A</color>
     <color name="knock_glitch_teal">#2DE2D0</color>
     <color name="knock_error">#FF6B6B</color>
+
+    <color name="notification_badge">#FFD7372B</color>
+    <color name="notification_foreground">#DE000000</color>
+    <color name="notification_foreground_muted">#99000000</color>
+    <color name="notification_cache_filling">#B26A00</color>
+    <color name="notification_cache_replacing">#2E7D32</color>
 </resources>

@@ -12,6 +12,7 @@ import kotlin.random.Random
  * Android: AndroidAudioSource (AudioRecord). iOS: implement with AVAudioEngine.
  */
 interface AudioSource {
+    /** Emits mono 16-bit chunks at [sampleRate]; collecting holds the source open. */
     fun frames(sampleRate: Int): Flow<ShortArray>
 
     /** Which input is live and any problem with it, for the home screen. Null if unknown. */
@@ -26,6 +27,7 @@ data class InputStatus(val label: String, val warning: String?)
  * AVAudioEngine source exists, so the UI and timing rules can be tested anywhere.
  */
 class SimulatedAudioSource : AudioSource {
+    /** Emits random noise in 100 ms chunks forever, loud for a few seconds then quiet, mimicking speech. */
     override fun frames(sampleRate: Int): Flow<ShortArray> = flow {
         val chunk = sampleRate / 10
         var t = 0

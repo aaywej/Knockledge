@@ -82,7 +82,7 @@ androidApp/src/main/kotlin/group/two/knockledge/
 │   └── Recents.kt                  # Existing legacy wrapper adapted to NoteRepository
 ├── di/
 │   ├── DataModule.kt               # Dagger module providing Room, Firebase, Repositories
-│   └── RewinderComponent.kt        # Component bindings
+│   └── KnockledgeComponent.kt      # Component bindings
 └── ui/
     ├── auth/
     │   ├── AuthScreen.kt           # Login and Registration Compose UI (Google & Email)

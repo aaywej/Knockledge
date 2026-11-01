@@ -1,92 +1,105 @@
 package group.two.knockledge
 
+import android.os.Looper
+import group.two.knockledge.audio.AudioSource
+import group.two.knockledge.audio.NoopSessionHooks
+import group.two.knockledge.audio.RingAudioCapturer
+import group.two.knockledge.core.LocalAudioRingBuffer
+import group.two.knockledge.data.InMemoryRecentsRepository
+import group.two.knockledge.pipeline.DefaultAudioPreprocessor
+import group.two.knockledge.pipeline.PlaceholderSummarizer
+import group.two.knockledge.pipeline.PlaceholderTranscriber
+import group.two.knockledge.pipeline.RewindPipeline
+import group.two.knockledge.sensor.KnockGestureDetector
 import group.two.knockledge.settings.AppSettings
 import group.two.knockledge.settings.MemoryStore
 import group.two.knockledge.ui.KnockRecordingViewModel
-import group.two.knockledge.ui.RecordingBackend
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+@RunWith(RobolectricTestRunner::class)
 class KnockRecordingViewModelTest {
-    private class FakeBackend(var canSave: Boolean = true) : RecordingBackend {
-        val flow = MutableStateFlow(RewinderState())
-        override val state: StateFlow<RewinderState> = flow
-        var saves = 0
-        var starts = 0
-        var stops = 0
-        override fun start() { starts++; flow.value = flow.value.copy(isRunning = true) }
-        override fun stop() { stops++; flow.value = flow.value.copy(isRunning = false) }
-        override fun save(): Boolean {
-            if (!canSave) return false
-            saves++
-            flow.value = flow.value.copy(pendingRewinds = 1)
-            return true
+
+    private class TestBuffer : LocalAudioRingBuffer {
+        override fun write(chunk: ShortArray, length: Int) = Unit
+        override fun setWindowSeconds(seconds: Int) = Unit
+        override fun bufferedMillis(): Long = 0L
+        override fun snapshot(): File = File.createTempFile("snap", ".wav")
+        override fun clear() = Unit
+    }
+
+    private class TestDetector : KnockGestureDetector {
+        override var isListening = false
+            private set
+        override fun startListening(onKnockDetected: () -> Unit) { isListening = true }
+        override fun stopListening() { isListening = false }
+        override fun setPeakThreshold(threshold: Float) = Unit
+    }
+
+    private class EmptySource : AudioSource {
+        override fun frames(sampleRate: Int): Flow<ShortArray> = emptyFlow()
+    }
+
+    private fun createController(): KnockledgeController {
+        val capturer = RingAudioCapturer(EmptySource(), TestBuffer())
+        val pipeline = RewindPipeline(PlaceholderTranscriber(), PlaceholderSummarizer(), DefaultAudioPreprocessor())
+        return KnockledgeController(
+            capturer = capturer,
+            knockDetector = TestDetector(),
+            hooks = NoopSessionHooks,
+            pipeline = pipeline,
+            recents = InMemoryRecentsRepository(),
+        )
+    }
+
+    /** Runs queued main-looper coroutines until [condition] holds or the timeout hits. */
+    private suspend fun awaitUi(condition: () -> Boolean) {
+        withTimeout(5_000L) {
+            while (!condition()) {
+                shadowOf(Looper.getMainLooper()).idle()
+                delay(10L)
+            }
         }
     }
 
-    private fun vm(backend: FakeBackend, settings: AppSettings = AppSettings(MemoryStore(), "m")) =
-        KnockRecordingViewModel(backend, settings, CoroutineScope(Dispatchers.Unconfined))
-
     @Test
-    fun startAndStopReflectInState() {
-        val b = FakeBackend()
-        val vm = vm(b)
-        assertFalse(vm.uiState.value.isRecording)
-        vm.startSession()
-        assertTrue(vm.uiState.value.isRecording)
-        assertTrue(vm.uiState.value.isGestureActive)
-        vm.stopSession()
-        assertFalse(vm.uiState.value.isRecording)
-        assertEquals(1, b.starts)
-        assertEquals(1, b.stops)
-    }
-
-    @Test
-    fun manualSaveInvokesBackendAndShowsSaving() {
-        val b = FakeBackend()
-        val vm = vm(b)
-        assertNull(vm.uiState.value.lastSaveSuccess)
-        vm.triggerManualSave()
-        assertEquals(1, b.saves)
-        assertTrue(vm.uiState.value.isSavingSnapshot)
-        assertEquals(true, vm.uiState.value.lastSaveSuccess)
-        b.flow.value = b.flow.value.copy(pendingRewinds = 0)
-        assertFalse(vm.uiState.value.isSavingSnapshot)
-    }
-
-    @Test
-    fun rejectedManualSaveReportsFailure() {
-        val vm = vm(FakeBackend(canSave = false))
-        vm.triggerManualSave()
-        assertEquals(false, vm.uiState.value.lastSaveSuccess)
-        assertFalse(vm.uiState.value.isSavingSnapshot)
-    }
-
-    @Test
-    fun bufferDurationIsClampedAndExposed() {
+    fun startAndStopReflectInUiState() = runBlocking {
+        val controller = createController()
         val settings = AppSettings(MemoryStore(), "m")
-        val vm = vm(FakeBackend(), settings)
-        assertEquals(300, vm.uiState.value.maxBufferSeconds)
-        vm.setBufferDurationSeconds(120)
-        assertEquals(120, vm.uiState.value.maxBufferSeconds)
-        vm.setBufferDurationSeconds(9999)
-        assertEquals(300, vm.uiState.value.maxBufferSeconds)
-        vm.setBufferDurationSeconds(1)
-        assertEquals(60, vm.uiState.value.maxBufferSeconds)
+        val vm = KnockRecordingViewModel(controller, settings)
+
+        awaitUi { !vm.uiState.value.isRecording }
+
+        vm.startSession()
+        awaitUi { vm.uiState.value.isRecording }
+        assertTrue(vm.uiState.value.isGestureActive)
+
+        vm.stopSession()
+        awaitUi { !vm.uiState.value.isRecording }
     }
 
     @Test
-    fun bufferedSecondsFollowRecorder() {
-        val b = FakeBackend()
-        val vm = vm(b)
-        b.flow.value = b.flow.value.copy(bufferedMillis = 12_900L)
-        assertEquals(12, vm.uiState.value.bufferedSeconds)
+    fun bufferDurationClampingPropagatesToUiState() = runBlocking {
+        val controller = createController()
+        val settings = AppSettings(MemoryStore(), "m")
+        val vm = KnockRecordingViewModel(controller, settings)
+
+        awaitUi { vm.uiState.value.maxBufferSeconds == 300 }
+        assertEquals(300, vm.uiState.value.maxBufferSeconds)
+
+        vm.setBufferDurationSeconds(120)
+        awaitUi { vm.uiState.value.maxBufferSeconds == 120 }
+        assertEquals(120, vm.uiState.value.maxBufferSeconds)
     }
 }

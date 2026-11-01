@@ -35,6 +35,10 @@ class MixedAudioSource(
     /** True when the device can capture its own audio at all. */
     val supportsDeviceAudio: Boolean get() = device != null
 
+    /**
+     * Streams the mic with device audio added on top when [useDevice] allows it, otherwise the
+     * mic alone. When the mic is cut off, device audio keeps flowing on its own.
+     */
     override fun frames(sampleRate: Int): Flow<ShortArray> {
         val device = device
         if (device == null || !useDevice()) {
@@ -101,6 +105,7 @@ class MixedAudioSource(
         }
     }
 
+    /** Mic label plus device audio while mixing, otherwise the mic's own status. */
     override fun status(): InputStatus? {
         val micStatus = mic.status()
         if (!mixing) return micStatus
@@ -128,6 +133,7 @@ internal class SampleQueue(private val capacity: Int) {
     private var head = 0
     private var size = 0
 
+    /** Appends [samples], dropping the oldest queued samples once [capacity] is reached. */
     fun push(samples: ShortArray) {
         for (s in samples) {
             if (size == capacity) {

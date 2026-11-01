@@ -43,8 +43,8 @@
 
 ### Implementation for User Story 2
 - [x] T010 [US2] Implement `FileLocalAudioRingBuffer` managing 5-second chunk files in `cache/audio_buffer/`, pruning files beyond `durationSeconds`, and exporting concatenated audio in `androidApp/src/main/kotlin/group/two/knockledge/core/FileLocalAudioRingBuffer.kt`
-- [x] T011 [US2] Update `RewinderController.kt` to replace in-memory `AudioRingBuffer` with `FileLocalAudioRingBuffer` in `androidApp/src/main/kotlin/group/two/knockledge/RewinderController.kt`
-- [x] T012 [US2] Connect `AppSettings.bufferDuration` updates to dynamic `setWindowSeconds()` in `androidApp/src/main/kotlin/group/two/knockledge/RewinderController.kt`
+- [x] T011 [US2] Update `KnockledgeController.kt` to replace in-memory `AudioRingBuffer` with `FileLocalAudioRingBuffer` in `androidApp/src/main/kotlin/group/two/knockledge/KnockledgeController.kt`
+- [x] T012 [US2] Connect `AppSettings.bufferDuration` updates to dynamic `setWindowSeconds()` in `androidApp/src/main/kotlin/group/two/knockledge/KnockledgeController.kt`
 
 **Checkpoint**: User Story 2 complete. Continuous audio records directly to disk cache and evicts old data without RAM leakage.
 
@@ -60,7 +60,7 @@
 
 ### Implementation for User Story 1
 - [x] T014 [US1] Implement `AndroidKnockGestureDetector` using `Sensor.TYPE_LINEAR_ACCELERATION` (with accelerometer gravity filtering fallback) and 50 ms vibration pulse in `androidApp/src/main/kotlin/group/two/knockledge/sensor/AndroidKnockGestureDetector.kt`
-- [x] T015 [US1] Wire `KnockGestureDetector` into `RewinderService` in `androidApp/src/main/kotlin/group/two/knockledge/KnockledgeService.kt` to start listening when recording begins and trigger `rewind()` snapshot on knock detection
+- [x] T015 [US1] Wire `KnockGestureDetector` into `KnockledgeService` in `androidApp/src/main/kotlin/group/two/knockledge/KnockledgeService.kt` to start listening when recording begins and trigger `rewind()` snapshot on knock detection
 
 **Checkpoint**: User Story 1 complete. Double knocks trigger haptic vibration and save preceding audio from the local cache.
 

@@ -1,60 +1,55 @@
 package group.two.knockledge.ui
 
-import group.two.knockledge.RewinderController
-import group.two.knockledge.RewinderState
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import group.two.knockledge.KnockledgeController
 import group.two.knockledge.data.TriggerType
 import group.two.knockledge.settings.AppSettings
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
-interface RecordingBackend {
-    val state: StateFlow<RewinderState>
-    fun start()
-    fun stop()
-    fun save(): Boolean
-}
-
-fun RewinderController.asBackend(): RecordingBackend = object : RecordingBackend {
-    override val state = this@asBackend.state
-    override fun start() = this@asBackend.start()
-    override fun stop() = this@asBackend.stop()
-    override fun save(): Boolean {
-        if (!state.value.canRewind) return false
-        rewind(TriggerType.MANUAL)
-        return true
-    }
-}
-
+/**
+ * [ViewModel] combining session state from [KnockledgeController] and [AppSettings] into [KnockRecordingUiState].
+ */
 class KnockRecordingViewModel(
-    private val backend: RecordingBackend,
+    private val controller: KnockledgeController,
     private val settings: AppSettings,
-    scope: CoroutineScope,
-) : KnockRecordingController {
+) : ViewModel(), KnockRecordingController {
     private val lastSaveSuccess = MutableStateFlow<Boolean?>(null)
 
+    /** Combined recording, buffer, and save-status state for the UI. */
     override val uiState: StateFlow<KnockRecordingUiState> =
-        combine(backend.state, settings.bufferDurationSeconds, lastSaveSuccess) { rec, max, saved ->
+        combine(controller.state, settings.bufferDurationSeconds, lastSaveSuccess) { rec, max, saved ->
             KnockRecordingUiState(
                 isRecording = rec.isRunning,
                 bufferedSeconds = (rec.bufferedMillis / 1000L).toInt(),
                 maxBufferSeconds = max,
-                isGestureActive = rec.isRunning,
+                isGestureActive = rec.isGestureActive,
                 isSavingSnapshot = rec.pendingRewinds > 0,
                 lastSaveSuccess = saved,
+                level = rec.level,
             )
-        }.stateIn(scope, SharingStarted.Eagerly, KnockRecordingUiState())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, KnockRecordingUiState())
 
-    override fun startSession() = backend.start()
+    /** Starts the recording session. */
+    override fun startSession() = controller.start()
 
-    override fun stopSession() = backend.stop()
+    /** Stops the recording session. */
+    override fun stopSession() = controller.stop()
 
+    /** Saves a snapshot of the current buffer and records the outcome. */
     override fun triggerManualSave() {
-        lastSaveSuccess.value = backend.save()
+        if (!controller.state.value.canRewind) {
+            lastSaveSuccess.value = false
+            return
+        }
+        controller.rewind(TriggerType.MANUAL)
+        lastSaveSuccess.value = true
     }
 
+    /** Persists the requested buffer window length via [AppSettings]. */
     override fun setBufferDurationSeconds(seconds: Int) = settings.setBufferDurationSeconds(seconds)
 }

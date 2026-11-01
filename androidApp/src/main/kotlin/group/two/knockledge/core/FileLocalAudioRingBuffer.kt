@@ -7,7 +7,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import javax.inject.Inject
 
-/** Not thread safe on purpose: RewinderController confines every call to its audio dispatcher. */
+/** Not thread safe on purpose: KnockledgeController confines every call to its audio dispatcher. */
 class FileLocalAudioRingBuffer(
     private val dir: File,
     windowSeconds: Int = RewindPolicy.WINDOW_SECONDS,
@@ -28,6 +28,7 @@ class FileLocalAudioRingBuffer(
         wipeDir()
     }
 
+    /** Appends PCM16 to the newest chunk file, starting a new one at the chunk size and deleting the oldest past the window. */
     override fun write(chunk: ShortArray, length: Int) {
         var offset = 0
         while (offset < length) {
@@ -41,16 +42,19 @@ class FileLocalAudioRingBuffer(
         }
     }
 
+    /** Resizes the window, clamping it to the policy range and deleting the chunks that no longer fit. */
     override fun setWindowSeconds(seconds: Int) {
         maxChunks = chunksFor(seconds)
         prune()
     }
 
+    /** Audio held on disk: the closed chunks plus the samples already in the active one. */
     override fun bufferedMillis(): Long {
         if (files.isEmpty()) return 0L
         return ((files.size - 1).toLong() * chunkSamples + activeSamples) * 1000L / sampleRate
     }
 
+    /** Concatenates the chunks in recording order into a new 16 kHz mono WAV; the buffer keeps recording. */
     override fun snapshot(): File {
         val out = File(dir, "snapshot_${System.nanoTime()}.wav")
         val dataBytes = files.sumOf { it.length() }
@@ -61,6 +65,7 @@ class FileLocalAudioRingBuffer(
         return out
     }
 
+    /** Closes the active chunk and deletes every buffered file, including earlier snapshots. */
     override fun clear() {
         active?.close()
         active = null

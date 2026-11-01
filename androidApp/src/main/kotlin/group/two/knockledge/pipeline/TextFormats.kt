@@ -17,6 +17,7 @@ object TranscriptionHints {
 
 /** Qwen chat template (ChatML), with thinking turned off for a fast, direct answer. */
 object QwenChatFormat {
+    /** Wraps [system] and [user] in ChatML, with an empty think block to skip reasoning. */
     fun build(system: String, user: String): String =
         "<|im_start|>system\n$system<|im_end|>\n" +
             "<|im_start|>user\n$user<|im_end|>\n" +
@@ -33,6 +34,7 @@ object TranscriptCleaner {
     private val spaces = Regex("""\s+""")
     private val sentenceEnd = Regex("""(?<=[.!?])\s+""")
 
+    /** Strips annotation tags, collapses whitespace, and drops repeated sentences. */
     fun clean(raw: String): String {
         val stripped = raw
             .replace(bracketTags, " ")
@@ -58,6 +60,7 @@ object SummaryParser {
     private val bullet = Regex("""^(?:[-*•]|\d+[.)])\s+(.+)$""")
     private val label = Regex("""^\**\s*(TITLE|GIST)\s*\**\s*:\s*\**\s*(.*)$""", RegexOption.IGNORE_CASE)
 
+    /** Extracts TITLE, GIST and bullet points from [raw], filling gaps with fallbacks. */
     fun parse(raw: String, redactedCount: Int): Summary {
         val text = raw.replace(thinkBlock, "").replace("<think>", "").replace("</think>", "").trim()
         var title: String? = null
@@ -100,18 +103,19 @@ object SummaryParser {
 
 /** Canned results that never need a model. */
 object Summaries {
+    /** Card shown when the transcript came back empty, localized to [outputLanguage]. */
     fun nothingHeard(redactedCount: Int, outputLanguage: String = SummaryLanguages.AUTO): Summary =
         if (outputLanguage == SummaryLanguages.FILIPINO) {
             Summary(
                 title = "Walang malinaw na narinig",
-                gist = "Walang malinaw na pananalita na nakuha ang Rewinder sa bahaging iyon.",
+                gist = "Walang malinaw na pananalita na nakuha ang Knockledge sa bahaging iyon.",
                 points = listOf("Maaaring tahimik, malayo ang nagsasalita, o puro ingay sa paligid."),
                 redactedCount = redactedCount,
             )
         } else {
             Summary(
                 title = "Nothing clear heard",
-                gist = "Rewinder could not make out any speech in that stretch.",
+                gist = "Knockledge could not make out any speech in that stretch.",
                 points = listOf("It may have been quiet, too far away, or mostly background noise."),
                 redactedCount = redactedCount,
             )

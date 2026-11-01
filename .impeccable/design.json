@@ -1,0 +1,219 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-01T07:02:00Z",
+  "title": "Design System: Knockledge (Material 3)",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Antique Brass (Primary)",
+        "canonical": "#b8913f",
+        "tonalRamp": ["#231b08", "#453610", "#6d561a", "#927324", "#b8913f", "#d4af5a", "#e5cc8a", "#f6ebcf"]
+      },
+      "on-primary": {
+        "role": "on-primary",
+        "displayName": "Text Ink (On Primary)",
+        "canonical": "#1b1833",
+        "tonalRamp": ["#0b0a16", "#121024", "#1b1833", "#2a264e", "#3e396e", "#5a539b", "#7d76b8", "#b6b2d6"]
+      },
+      "primary-container": {
+        "role": "primary-container",
+        "displayName": "Brass Container",
+        "canonical": "#3f3010",
+        "tonalRamp": ["#140f05", "#281e0a", "#3f3010", "#5b4718", "#785f22", "#97772c", "#b69239", "#d7b250"]
+      },
+      "secondary": {
+        "role": "secondary",
+        "displayName": "Parchment Cream (Secondary)",
+        "canonical": "#f2e8d0",
+        "tonalRamp": ["#2a261d", "#524a3a", "#7c725c", "#a89c81", "#d0c5a8", "#e4dac0", "#f2e8d0", "#fcf8f0"]
+      },
+      "tertiary": {
+        "role": "tertiary",
+        "displayName": "Waveform Teal (Tertiary)",
+        "canonical": "#2de2d0",
+        "tonalRamp": ["#052522", "#0b4741", "#127168", "#1ca093", "#2de2d0", "#5ae9dc", "#8ef0e7", "#cbf9f5"]
+      },
+      "surface": {
+        "role": "surface",
+        "displayName": "Obsidian Midnight (Surface)",
+        "canonical": "#14122b",
+        "tonalRamp": ["#0a0916", "#14122b", "#1e1b3a", "#2b274e", "#3b3666", "#504b80", "#7872a8", "#b8b4d6"]
+      },
+      "surface-variant": {
+        "role": "surface-variant",
+        "displayName": "Surface Indigo (Surface Variant)",
+        "canonical": "#1e1b3a",
+        "tonalRamp": ["#0d0c1c", "#16142c", "#1e1b3a", "#2e2a56", "#423d78", "#59539a", "#817bbd", "#bebade"]
+      },
+      "outline": {
+        "role": "outline",
+        "displayName": "Antique Brass Stroke (Outline)",
+        "canonical": "#b8913f",
+        "tonalRamp": ["#231b08", "#453610", "#6d561a", "#927324", "#b8913f", "#d4af5a", "#e5cc8a", "#f6ebcf"]
+      },
+      "error": {
+        "role": "error",
+        "displayName": "Error Red",
+        "canonical": "#ff5449",
+        "tonalRamp": ["#410002", "#690005", "#93000a", "#ba1a1a", "#de3730", "#ff5449", "#ff897d", "#ffdad6"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display Large (KiwiSoda)",
+        "fontFamily": "KiwiSoda",
+        "assetPath": "androidApp/src/main/res/font/kiwi_soda.ttf",
+        "purpose": "Hero titles with gold text glow."
+      },
+      "headline": {
+        "displayName": "Headline Medium (KiwiSoda)",
+        "fontFamily": "KiwiSoda",
+        "assetPath": "androidApp/src/main/res/font/kiwi_soda.ttf",
+        "purpose": "Modal headers and prominent section titles."
+      },
+      "title": {
+        "displayName": "Title Medium (KiwiSoda)",
+        "fontFamily": "KiwiSoda",
+        "assetPath": "androidApp/src/main/res/font/kiwi_soda.ttf",
+        "purpose": "Anchor card titles and dialog headings."
+      },
+      "body": {
+        "displayName": "Body Medium (VCR OSD Mono)",
+        "fontFamily": "VCR OSD Mono",
+        "assetPath": "androidApp/src/main/res/font/vcr_osd_mono.ttf",
+        "purpose": "Monospace transcripts, summaries, and parameters."
+      },
+      "label": {
+        "displayName": "Label Medium (VCR OSD Mono)",
+        "fontFamily": "VCR OSD Mono",
+        "assetPath": "androidApp/src/main/res/font/vcr_osd_mono.ttf",
+        "purpose": "Technical telemetry markers, bounds, and indicators."
+      }
+    },
+    "shadows": [
+      {
+        "name": "ambient-glow-low",
+        "value": "0px 2px 8px 0px rgba(212, 175, 90, 0.12)",
+        "purpose": "Resting elevation for parchment cards."
+      },
+      {
+        "name": "ambient-glow-medium",
+        "value": "0px 4px 12px 0px rgba(212, 175, 90, 0.25)",
+        "purpose": "Active state for primary brass buttons."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Standard tactile button transition."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact",
+        "value": "360px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "FilledButton (Primary)",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Material 3 FilledButton styled with Antique Brass container and Text Ink content.",
+      "html": "<button class=\"ds-btn-primary\">START LISTENING</button>",
+      "css": ".ds-btn-primary { background: #b8913f; color: #1b1833; font-family: 'KiwiSoda', sans-serif; font-size: 16px; font-weight: 500; height: 48px; min-width: 160px; padding: 0 24px; border: 1px solid #b8913f; border-radius: 4px; box-shadow: 0 4px 12px rgba(212, 175, 90, 0.25); cursor: pointer; transition: background 0.15s, transform 0.15s, box-shadow 0.15s; } .ds-btn-primary:hover { background: #d4af5a; box-shadow: 0 4px 16px rgba(212, 175, 90, 0.4); transform: translateY(-1px); }"
+    },
+    {
+      "name": "OutlinedButton (Secondary)",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Material 3 OutlinedButton with Surface Indigo container, 1px Brass stroke, and Text Cream content.",
+      "html": "<button class=\"ds-btn-outline\">STOP SESSION</button>",
+      "css": ".ds-btn-outline { background: #1e1b3a; color: #f2e8d0; font-family: 'KiwiSoda', sans-serif; font-size: 16px; font-weight: 500; height: 48px; min-width: 160px; padding: 0 24px; border: 1px solid #b8913f; border-radius: 4px; cursor: pointer; transition: background 0.15s, border-color 0.15s; } .ds-btn-outline:hover { background: #2b274e; border-color: #d4af5a; }"
+    },
+    {
+      "name": "Card (Anchor Card)",
+      "kind": "card",
+      "refersTo": "card-anchor",
+      "description": "High-contrast Parchment Cream card representing saved audio notes with M3 Card styling.",
+      "html": "<div class=\"ds-card-anchor\"><div class=\"ds-card-meta\"><span class=\"ds-card-time\">OCT 21  12:04</span><span class=\"ds-card-dur\">0:25</span></div><h4 class=\"ds-card-title\">Photosynthesis</h4><p class=\"ds-card-desc\">Light energy captured by chlorophyll to synthesize ATP.</p><div class=\"ds-card-footer\"><span class=\"ds-card-status\">Summary ready</span><button class=\"ds-card-play\">Play</button></div></div>",
+      "css": ".ds-card-anchor { background: #f2e8d0; border: 1px solid rgba(212, 175, 90, 0.2); border-radius: 4px; padding: 16px; box-shadow: 0 2px 8px rgba(212, 175, 90, 0.12); width: 320px; box-sizing: border-box; } .ds-card-meta { display: flex; justify-content: space-between; font-family: 'VCR OSD Mono', monospace; font-size: 12px; color: #1b1833; margin-bottom: 6px; } .ds-card-title { margin: 0 0 6px 0; font-family: 'KiwiSoda', sans-serif; font-size: 18px; color: #1b1833; font-weight: 500; } .ds-card-desc { margin: 0 0 12px 0; font-family: 'VCR OSD Mono', monospace; font-size: 13px; color: #1b1833; line-height: 1.35; } .ds-card-footer { display: flex; justify-content: space-between; align-items: center; } .ds-card-status { font-family: 'VCR OSD Mono', monospace; font-size: 12px; color: #524a3a; } .ds-card-play { background: #f2e8d0; border: 1px solid #14122b; border-radius: 4px; color: #14122b; font-family: 'KiwiSoda', sans-serif; font-size: 14px; height: 32px; padding: 0 16px; cursor: pointer; } .ds-card-play:hover { background: #e4dac0; }"
+    },
+    {
+      "name": "ElevatedCard (Settings Panel)",
+      "kind": "card",
+      "refersTo": "card-surface",
+      "description": "Surface Indigo container for application preferences and parameters using M3 ElevatedCard.",
+      "html": "<div class=\"ds-settings-card\"><span class=\"ds-settings-label\">BUFFER DURATION</span><div class=\"ds-settings-val\"><span>5 minutes kept</span><span class=\"ds-settings-bounds\">1m - 5m</span></div></div>",
+      "css": ".ds-settings-card { background: #1e1b3a; border: 1px solid rgba(184, 145, 63, 0.4); border-radius: 4px; padding: 16px; width: 320px; box-sizing: border-box; } .ds-settings-label { display: block; font-family: 'VCR OSD Mono', monospace; font-size: 12px; color: #d4af5a; margin-bottom: 8px; letter-spacing: 0.05em; } .ds-settings-val { display: flex; justify-content: space-between; align-items: center; font-family: 'KiwiSoda', sans-serif; font-size: 16px; color: #f2e8d0; } .ds-settings-bounds { font-family: 'VCR OSD Mono', monospace; font-size: 12px; color: #b9b09a; }"
+    },
+    {
+      "name": "FilterChip (Status Pill)",
+      "kind": "chip",
+      "refersTo": "chip-pill",
+      "description": "High-visibility rounded chip displaying sensor or system readiness using M3 AssistChip.",
+      "html": "<div class=\"ds-pill-ready\">READY</div>",
+      "css": ".ds-pill-ready { display: inline-block; background: #d4af5a; color: #1b1833; font-family: 'VCR OSD Mono', monospace; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 999px; letter-spacing: 0.05em; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Obsidian & Brass Terminal",
+    "overview": "Knockledge operates as a physical instrumentation deck for audio preservation. The visual world combines deep obsidian midnight foundations (#14122b) with the mechanical authority of burnished antique brass (#b8913f) and tactile parchment cream (#f2e8d0). Material Design 3 (M3) governs architecture, semantic roles, navigation, and accessibility. Brand identity expresses through custom M3 color schemes, typography, and shape overrides.\n\nThe interface pairs Android platform conventions with analog instrument design. Android Material 3 components map directly to the retro terminal aesthetic. Controls enforce 48dp minimum interaction targets, edge-to-edge system bar insets, and predictive back gestures.",
+    "keyCharacteristics": [
+      "Material 3 Semantic Architecture: Complete mapping to official Android M3 color, typography, shape, and elevation roles.",
+      "Atmospheric Obsidian Substrate: Deep midnight violet ground illuminated by diffuse brass gradients.",
+      "Physical Anchor Cards: High-contrast vintage parchment surfaces housing captured spoken notes.",
+      "Dual Typographic Personality: Friendly KiwiSoda display titles paired with precise VCR OSD Monospace telemetry.",
+      "Hardware-Grade Tactility: Solid 1px borders, 4px micro-radii, and 48dp minimum interaction targets."
+    ],
+    "rules": [
+      {
+        "name": "The Material Semantic Rule",
+        "body": "All Compose UI code references MaterialTheme.colorScheme tokens, never raw hex values.",
+        "section": "colors"
+      },
+      {
+        "name": "The Telemetry Rarity Rule",
+        "body": "Electric teal and pink appear only within active audio frequency waveforms. They never decorate buttons, icons, or navigation controls.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink on Parchment Rule",
+        "body": "Light parchment cards (#f2e8d0) must always carry deep dark ink (#1b1833), never white or light gold text.",
+        "section": "colors"
+      },
+      {
+        "name": "The Dual Identity Rule",
+        "body": "Section headers and titles always use KiwiSoda. Timestamps, timers, statuses, and data counters always use VCR OSD Mono.",
+        "section": "typography"
+      },
+      {
+        "name": "The System Scale Rule",
+        "body": "All text units use sp dimensions to respect user system accessibility scale settings.",
+        "section": "typography"
+      },
+      {
+        "name": "The Luminescent Depth Rule",
+        "body": "Elevation emerges from glowing brass ambient light against obsidian midnight, not from black drop shadows.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do map all colors and typography through MaterialTheme.colorScheme and MaterialTheme.typography.",
+      "Do maintain a strict 48 × 48 dp minimum touch target for all interactive elements.",
+      "Do render saved audio notes on Parchment Cream cards (#f2e8d0) with dark ink text (#1b1833).",
+      "Do use Material 3 tonal elevation and brass luminescence instead of black drop shadows.",
+      "Do preserve 16dp screen edge margins on mobile layouts."
+    ],
+    "donts": [
+      "Don't use default Material 3 purple or pastel tint colors.",
+      "Don't use Teal (#2de2d0) or Pink (#ff3d9a) outside audio frequency waveforms.",
+      "Don't place light cream or gold text directly on Parchment Cream cards.",
+      "Don't use rounded corners larger than 4px on cards and buttons.",
+      "Don't hardcode raw hex values in Compose UI composables."
+    ]
+  }
+}

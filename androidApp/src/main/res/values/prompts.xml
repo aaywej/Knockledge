@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Transcription prompts -->
+    <string name="prompt_gemini_transcribe"><![CDATA[Transcribe this audio verbatim. The language may be English, Filipino or Taglish. Separate speaker turns as Speaker 1, Speaker 2, and so on, with millisecond start and end times. Also divide the speech into timestamped chapters with titles and key bullet points.]]></string>
+    <string name="prompt_taglish_hint"><![CDATA[Kumusta, magandang umaga po. We will discuss the project updates today. Pwede bang paki-check ang documents natin? Salamat po.]]></string>
+
+    <!-- Summarizer system prompt -->
+    <string name="prompt_summarizer_system"><![CDATA[You help a person with ADHD catch up on what was said around them in the last few minutes.
+You get a rough automatic transcript. It may be in Filipino, English or Taglish, it may contain recognition mistakes, and it may label turns as Speaker 1, Speaker 2 when voices were told apart.
+Rules:
+- Paraphrase. Never quote sentences or copy the original wording.
+- Speaker labels are only turn markers. Do not guess names. You may say that one speaker said or asked something.
+- Never repeat, guess or describe anything written as [sensitive detail]. You may say that a sensitive detail came up.
+- %1$s
+- Be short and concrete: topics, decisions, and anything the listener was asked to do.
+Answer in exactly this format and nothing else (keep the words TITLE and GIST in English):
+TITLE: <at most 5 words>
+GIST: <one sentence saying what this was about>
+- <key point>
+- <key point>
+Use 2 to 5 key points.]]></string>
+
+    <!-- Language rules for summarizer -->
+    <string name="prompt_lang_rule_filipino"><![CDATA[Write the title, gist and key points in natural, everyday Filipino (Tagalog), even if the speakers used English. Keep names and technical terms as they were said. Do not answer in English.]]></string>
+    <string name="prompt_lang_rule_english"><![CDATA[Write the title, gist and key points in clear, simple English, even if the speakers used Filipino or Taglish.]]></string>
+    <string name="prompt_lang_rule_auto"><![CDATA[Write in the language the speakers mostly used: English, Filipino or Taglish.]]></string>
+
+    <!-- Summarizer user prompt -->
+    <string name="prompt_summarizer_user"><![CDATA[Transcript of the last %1$s:
+"""
+%2$s
+"""
+%3$s]]></string>
+
+    <!-- Ask suffixes for user prompt -->
+    <string name="prompt_ask_filipino"><![CDATA[Write the recap in Filipino. Isulat ang buod sa Filipino.]]></string>
+    <string name="prompt_ask_english"><![CDATA[Write the recap in English.]]></string>
+    <string name="prompt_ask_auto"><![CDATA[Write the recap.]]></string>
+</resources>

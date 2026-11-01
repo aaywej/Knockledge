@@ -4,12 +4,12 @@ import group.two.knockledge.data.model.AuthProvider
 import group.two.knockledge.data.model.UserProfile
 import group.two.knockledge.data.remote.AuthSource
 import group.two.knockledge.data.repository.AuthRepositoryImpl
+import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlinx.coroutines.runBlocking
 
 class AuthRepositoryTest {
     private class FakeSource(var existing: UserProfile? = null) : AuthSource {

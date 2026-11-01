@@ -14,6 +14,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import group.two.knockledge.audio.DeviceAudioConsent.take
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -40,6 +41,7 @@ object DeviceAudioConsent {
     @Volatile var grantedThisSession: Boolean = false
         private set
 
+    /** Captures the user's answer to the capture prompt for the next recording start. */
     fun grant(resultCode: Int, data: Intent) {
         this.resultCode = resultCode
         this.data = data
@@ -54,6 +56,7 @@ object DeviceAudioConsent {
         return resultCode to d
     }
 
+    /** Drops the grant and the session flags; called when a recording ends. */
     fun clear() {
         data = null
         grantedThisSession = false
@@ -68,7 +71,7 @@ object DeviceAudioConsent {
  * What Android does not allow: phone and VoIP call audio (USAGE_VOICE_COMMUNICATION) and apps
  * that opt out of capture are silent here. That is a platform privacy rule, not a setting.
  */
-/** Only constructed on Android 10+ (see RewinderApplication). */
+/** Only constructed on Android 10+ (see KnockledgeApplication). */
 @TargetApi(Build.VERSION_CODES.Q)
 class AndroidDeviceAudioSource(context: Context) : AudioSource {
     private val appContext = context.applicationContext
@@ -77,6 +80,11 @@ class AndroidDeviceAudioSource(context: Context) : AudioSource {
     @Volatile private var label: String? = null
     @Volatile private var warning: String? = null
 
+    /**
+     * Emits playback chunks of about 100 ms using the single-use grant in [DeviceAudioConsent].
+     * Closes the flow with [IllegalStateException] when consent, the foreground service, or the
+     * capture itself is missing.
+     */
     @SuppressLint("MissingPermission")
     override fun frames(sampleRate: Int): Flow<ShortArray> = callbackFlow {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
@@ -123,7 +131,7 @@ class AndroidDeviceAudioSource(context: Context) : AudioSource {
         Log.i(TAG, "capturing playback at $rate Hz")
 
         val producer = this
-        val reader = thread(name = "rewinder-device-audio", isDaemon = true) {
+        val reader = thread(name = "knockledge-device-audio", isDaemon = true) {
             val factor = rate / sampleRate
             val raw = ShortArray(sampleRate / 10 * factor)
             try {
@@ -149,6 +157,7 @@ class AndroidDeviceAudioSource(context: Context) : AudioSource {
         }
     }
 
+    /** "phone audio" while capturing, else the last warning, or null before the first attempt. */
     override fun status(): InputStatus? = label?.let { InputStatus(it, warning) }
         ?: warning?.let { InputStatus("phone audio off", it) }
 
@@ -197,7 +206,7 @@ class AndroidDeviceAudioSource(context: Context) : AudioSource {
     }
 
     private companion object {
-        const val TAG = "RewinderDeviceAudio"
+        const val TAG = "KnockledgeDeviceAudio"
     }
 }
 
