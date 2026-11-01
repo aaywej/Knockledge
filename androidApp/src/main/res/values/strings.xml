@@ -48,6 +48,27 @@
     <string name="sign_in">Sign In</string>
     <string name="sign_out">Sign Out</string>
     <string name="register">Register</string>
+
+    <!-- Auth Screen -->
+    <string name="auth_sign_in_title">Sign in</string>
+    <string name="auth_sign_in_subtitle">Sign in to Knockledge before you start recording.</string>
+    <string name="auth_register_title">Create account</string>
+    <string name="auth_register_subtitle">Create a Knockledge account to sync your audio anchors across devices.</string>
+    <string name="auth_sign_in_with_google">Sign in with Google</string>
+    <string name="auth_or_with_email">OR WITH EMAIL</string>
+    <string name="auth_or_with_google">OR WITH GOOGLE</string>
+    <string name="auth_email_label">Email</string>
+    <string name="auth_email_placeholder">jordan@example.com</string>
+    <string name="auth_password_label">Password</string>
+    <string name="auth_display_name_label">Display Name</string>
+    <string name="auth_display_name_placeholder">Jordan Doe</string>
+    <string name="auth_sign_in_button">Sign in</string>
+    <string name="auth_create_account_button">Create account</string>
+    <string name="auth_new_to_knockledge">New to Knockledge?</string>
+    <string name="auth_have_account">Already have an account?</string>
+    <string name="auth_back_cd">Back</string>
+    <string name="auth_password_toggle_cd">Toggle password visibility</string>
+    <string name="auth_google_logo_cd">Google logo</string>
     <string name="buffer_duration_setting">Buffer Duration</string>
     <string name="knock_threshold_setting">Knock Sensitivity Threshold</string>
     <string name="knock_threshold_desc">Adjust accelerometer g-force threshold for knock detection.</string>
